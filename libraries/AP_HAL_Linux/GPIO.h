@@ -44,4 +44,7 @@ private:
 #elif HAL_LINUX_GPIO_AERO_ENABLED
 #define HAL_LINUX_GPIO_SYSFS_ENABLED 1
 #include "GPIO_Aero.h"
+#elif HAL_LINUX_GPIO_T3_GEM_O1_ENABLED
+#define HAL_LINUX_GPIO_SYSFS_ENABLED 1
+#include "GPIO_T3_GEM_O1.h"
 #endif

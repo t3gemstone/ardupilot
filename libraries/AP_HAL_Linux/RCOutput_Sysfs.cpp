@@ -46,6 +46,22 @@ void RCOutput_Sysfs::init()
         _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs_Bebop(_channel_base+i);
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RST_ZYNQ
         _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+i, 0);
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_T3_GEM_O1
+        // pwmchip3, pwmchip5 and pwmchip7 has two channels each.
+        // But channels of a pwmchip cannot differ in period value.
+        if (i == 3) {
+            // pwmchip3/pwm0
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+3, 0);
+        } else if (i == 4) {
+            // pwmchip7/pwm0
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+7, 0);
+        } else if (i == 5 || i == 6) {
+            // pwmchip5/pwm0, pwmchip5/pwm1
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+5, i - 5);
+        } else {
+            // pwmchip0/pwm0, pwmchip1/pwm0, pwmchip2/pwm0
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+i, 0);
+        }
 #else
         _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip, _channel_base+i);
 #endif
