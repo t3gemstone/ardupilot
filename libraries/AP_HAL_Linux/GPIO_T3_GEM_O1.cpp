@@ -5,8 +5,8 @@
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_T3_GEM_O1
 
 const unsigned Linux::GPIO_Sysfs::pin_table[] = {
-    [T3_GEM_O1_GPIO_LED_GREEN] = 380,
-    [T3_GEM_O1_GPIO_LED_RED]   = 381,
+    [T3_GEM_O1_GPIO_LED_GREEN] = 413,
+    [T3_GEM_O1_GPIO_LED_RED]   = 412,
     [T3_GEM_O1_GPIO2]          = 506,
     [T3_GEM_O1_GPIO3]          = 505,
     [T3_GEM_O1_GPIO4]          = 439,
