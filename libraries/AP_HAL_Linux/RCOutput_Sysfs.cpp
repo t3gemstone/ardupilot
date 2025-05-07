@@ -46,6 +46,13 @@ void RCOutput_Sysfs::init()
         _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs_Bebop(_channel_base+i);
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RST_ZYNQ
         _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+i, 0);
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_T3_GEM_O1
+        if (i == 4 || i == 5) {
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+5, i - 4);
+
+        } else {
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+i, 0);
+        }
 #else
         _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip, _channel_base+i);
 #endif
