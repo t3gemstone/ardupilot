@@ -1,0 +1,91 @@
+# T3 Foundation Gemstone Project [t3gemstone.org]
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3'
+
+vars:
+  BUILD_DIR: "{{ .ROOT_DIR }}/build"
+  DOWNLOAD_DIR: "{{ .BUILD_DIR }}/downloads"
+  TOOLCHAINS_DIR: "{{ .BUILD_DIR }}/${DISTRO_BASE}-${DISTRO_SUITE}"
+  VENV_DIR: "{{ .ROOT_DIR }}/.venv"
+  WAF: "{{ .ROOT_DIR }}/modules/waf/waf-light"
+  URLS:
+    map: {
+      toolchains: "https://github.com/t3gemstone/toolchains/releases/latest/download/t3gemstone-toolchains-${DISTRO_BASE}-${DISTRO_SUITE}.tar.gz",
+    }
+
+env:
+  MACHINE: t3-gem-o1
+  DISTRO_BASE: ubuntu
+  DISTRO_SUITE: jammy
+  VEHICLE: copter
+
+tasks:
+
+  default:
+    silent: true
+    cmds:
+      - task --list-all --summary
+      - echo
+      - echo "Environment:"
+      - echo "  MACHINE      = ${MACHINE}"
+      - echo "  DISTRO_BASE  = ${DISTRO_BASE}"
+      - echo "  DISTRO_SUITE = ${DISTRO_SUITE}"
+      - echo "  VEHICLE      = ${VEHICLE}"
+      - echo
+
+  wget:
+    internal: true
+    silent: true
+    cmds:
+      - mkdir -p $(dirname "{{ .PATH }}")
+      - wget --no-clobber --continue --quiet --show-progress -O "{{ .PATH }}" "{{ .URL }}" || true
+    requires:
+      vars: [ URL, PATH ]
+    status:
+      - test -f "{{ .PATH }}"
+
+  fetch:
+    silent: true
+    cmds:
+      - task: wget
+        vars:
+          URL: '{{ get .URLS "toolchains" }}'
+          PATH: "{{ .DOWNLOAD_DIR }}/t3gemstone-toolchains-${DISTRO_BASE}-${DISTRO_SUITE}.tar.gz"
+      - |
+        if [ ! -d "{{ .TOOLCHAINS_DIR }}" ]; then
+          mkdir -p "{{ .TOOLCHAINS_DIR }}"
+          tar xf "{{ .DOWNLOAD_DIR }}/t3gemstone-toolchains-${DISTRO_BASE}-${DISTRO_SUITE}.tar.gz" --directory "{{ .TOOLCHAINS_DIR }}"
+        fi
+      - |
+        python3 -m venv "{{ .VENV_DIR }}"
+        export PATH="{{ .VENV_DIR }}/bin:$PATH"
+        pip3 install --quiet --no-input --disable-pip-version-check \
+          future==1.0.0 \
+          empy==3.3.4 \
+          pexpect==4.9.0 \
+          dronecan==1.0.26
+
+  destroy:
+    prompt: 'T3 Gemstone Toolchains will be deleted. Do you want to continue?'
+    cmds:
+      - rm -f "{{ .DOWNLOAD_DIR }}/t3gemstone-toolchains-${DISTRO_BASE}-${DISTRO_SUITE}.tar.gz"
+      - rm -rf "{{ .TOOLCHAINS_DIR }}"
+
+  build:
+    cmds:
+      - task: fetch
+      - |
+        pushd "{{ .TOOLCHAINS_DIR }}" >/dev/null && source ./env && popd >/dev/null
+        export PATH="{{ .VENV_DIR }}/bin:$PATH"
+        {{ .WAF }} configure --board="${MACHINE}"
+        {{ .WAF }} "${VEHICLE}"
+        aarch64-linux-gnu-strip "{{ .BUILD_DIR }}/{{ .MACHINE }}/bin/ardu{{ .VEHICLE }}"
+
+  clean:
+    cmds:
+      - task: fetch
+      - |
+        pushd "{{ .TOOLCHAINS_DIR }}" >/dev/null && source ./env && popd >/dev/null
+        export PATH="{{ .VENV_DIR }}/bin:$PATH"
+        {{ .WAF }} clean

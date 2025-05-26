@@ -1,0 +1,11 @@
+[Unit]
+Description=Configure t3-gem-o1 board for ArduPilot
+Documentation=https://docs.t3gemstone.org
+
+[Service]
+Type=oneshot
+
+// Configure LEDs
+ExecStart=/bin/bash -c 'echo leds-user > /sys/bus/platform/drivers/leds-gpio/unbind || exit 0'
+ExecStart=/bin/bash -c '[ ! -d /sys/class/gpio/gpio381 ] && echo 381 > /sys/class/gpio/export || exit 0'
+ExecStart=/bin/bash -c 'echo 1 > /sys/class/gpio/gpio381/active_low || exit 0'

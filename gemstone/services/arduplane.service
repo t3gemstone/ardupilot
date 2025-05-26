@@ -1,0 +1,17 @@
+[Unit]
+Description=ArduPilot-Plane for t3-gem-o1 Board
+Documentation=https://docs.t3gemstone.org
+
+After=ardupilot-sysconfig.service
+Requires=ardupilot-sysconfig.service
+Conflicts=arducopter.service ardurover.service ardusub.service
+
+[Service]
+EnvironmentFile=/opt/gemstone/ardupilot/ardupilot.env
+
+ExecStart=/bin/bash -c '/opt/gemstone/ardupilot/arduplane ${ARDUPILOT_ARGS}'
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

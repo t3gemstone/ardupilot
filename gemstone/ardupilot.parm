@@ -1,0 +1,14 @@
+# https://ardupilot.org/copter/docs/parameters.html
+
+### General settings
+FRAME_CLASS,1 # Quad
+FRAME_TYPE,0  # Plus configuration
+
+### Arm without RC transmitter
+FS_THR_ENABLE,0
+ARMING_CHECK,67
+FLTMODE_CH,0
+
+### Setup SERIAL5 as SBUS RC receiver
+SERIAL5_PROTOCOL,23
+SERIAL5_BAUD,100
