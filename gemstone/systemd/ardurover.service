@@ -1,0 +1,32 @@
+[Unit]
+Description=ArduPilot-Rover for T3 Gemstone Boards
+Documentation=https://docs.t3gemstone.org
+
+After=ardupilot-sysconfig.service
+Requires=ardupilot-sysconfig.service
+Conflicts=arducopter.service arduplane.service ardusub.service
+
+[Service]
+EnvironmentFile=/opt/ardupilot/etc/ardupilot.env
+
+ExecStart=/opt/ardupilot/bin/ardurover \
+    $SERIAL0 \
+    $SERIAL1 \
+    $SERIAL2 \
+    $SERIAL3 \
+    $SERIAL4 \
+    $SERIAL5 \
+    $SERIAL6 \
+    $SERIAL7 \
+    $SERIAL8 \
+    $SERIAL9 \
+    $LOG_DIRECTORY \
+    $TERRAIN_DIRECTORY \
+    $STORAGE_DIRECTORY \
+    $MODULE_DIRECTORY \
+    $CPU_AFFINITY
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
