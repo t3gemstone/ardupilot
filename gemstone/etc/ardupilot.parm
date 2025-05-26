@@ -1,0 +1,9 @@
+# --------------------
+# ArduPilot Parameters
+# --------------------
+
+# https://ardupilot.org/copter/docs/parameters.html
+
+### Setup SERIAL5 as SBUS RC input
+SERIAL5_PROTOCOL,23
+SERIAL5_BAUD,100
