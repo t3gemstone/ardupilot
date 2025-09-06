@@ -67,7 +67,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable arducopter
 
 # Update device-tree overlays
-sudo sed -i 's/^overlays=.*$/overlays=k3-am67a-t3-gem-o1-spidev0.dtbo k3-am67a-t3-gem-o1-spi0-1cs.dtbo k3-am67a-t3-gem-o1-i2c1-400000.dtbo k3-am67a-t3-gem-o1-uart-ttys0.dtbo k3-am67a-t3-gem-o1-uart-ttys6.dtbo k3-am67a-t3-gem-o1-gpio-fan.dtbo k3-am67a-t3-gem-o1-pwm-ecap0-gpio12.dtbo k3-am67a-t3-gem-o1-pwm-ecap1-gpio16.dtbo k3-am67a-t3-gem-o1-pwm-ecap2-gpio18.dtbo k3-am67a-t3-gem-o1-pwm-epwm0-gpio5.dtbo k3-am67a-t3-gem-o1-pwm-epwm1-gpio6-gpio13.dtbo/' /boot/uEnv.txt
+sudo sed -i 's/^overlays=.*$/overlays=k3-am67a-t3-gem-o1-spidev0-1cs.dtbo k3-am67a-t3-gem-o1-i2c1-400000.dtbo k3-am67a-t3-gem-o1-uart-ttys0.dtbo k3-am67a-t3-gem-o1-uart-ttys6.dtbo k3-am67a-t3-gem-o1-gpio-fan.dtbo k3-am67a-t3-gem-o1-pwm-ecap0-gpio12.dtbo k3-am67a-t3-gem-o1-pwm-ecap1-gpio16.dtbo k3-am67a-t3-gem-o1-pwm-ecap2-gpio18.dtbo k3-am67a-t3-gem-o1-pwm-epwm0-gpio5.dtbo k3-am67a-t3-gem-o1-pwm-epwm1-gpio6-gpio13.dtbo/' /boot/uEnv.txt
 
 # Reboot is needed for changes to take effect
 sudo reboot
@@ -79,8 +79,8 @@ more about [LEDs meaning](https://ardupilot.org/copter/docs/common-leds-pixhawk.
 
 ## QGroundControl
 
-You can establish MAVLink ground station connection via serial or UDP. By default UART-MAIN1 (`/dev/ttyS3`) is used.
-You can change it by editing the `/opt/gemstone/ardupilot/ardupilot.env` file. Check ArduPilot docs to learn more about [serial port configuration options](https://ardupilot.org/copter/docs/common-serial-options.html).
+You can establish MAVLink ground station connection via serial or UDP. By default `udp:192.168.7.59:14550` and 
+UART-MAIN1 (`/dev/ttyS3`) is used. You can change them by editing the `/opt/gemstone/ardupilot/ardupilot.env` file. 
 
 Connect RX, TX and GND pins of USB-to-TTL adapter to respective GPIO pins. After you insert the adapter to host PC, a
 new TTY device should be created.
@@ -90,34 +90,34 @@ Uncheck all of them as they prevent you from connecting via UART.
 
 Now open `Application Settings -> Comm Links` menu. Click the "Add" button. Select the right serial port and 115200 baud rate.
 After saving the configuration, click "Connect" and exit "Application Settings". MAVLink messages should arrive now and you
-should be able to see the status of the vehicle.
+should be able to see the status of the vehicle. You can also add UDP Comm Link from the same menu.
 
 ## GPIO Pinout
 
 Following table shows the function of each pin in the GPIO header after applying device-tree overlays.
 
-| FUNCTION                 | PINS                  | PINS                  | FUNCTION                 |
-|-------------------------:|:---------------------:|:---------------------:|:-------------------------|
-| 3v3 Power                | **3v3 Power**         | **5v Power**          | 5v Power                 |
-| I2C-MCU0 SDA             | **GPIO-2 (SYS_506)**  | **5v Power**          | 5v Power                 |
-| I2C-MCU0 SCL             | **GPIO-3 (SYS_505)**  | **GND**               | GND                      |
-| UART-MAIN6 RX            | **GPIO-4 (SYS_439)**  | **GPIO-14 (SYS_342)** | UART-MAIN1 TX            |
-| GND                      | **GND**               | **GPIO-15 (SYS_341)** | UART-MAIN1 RX            |
-| UART-MAIN6 TX            | **GPIO-17 (SYS_336)** | **GPIO-18 (SYS_339)** | PWM-ECAP2 (RCOut-3)      |
-|                          | **GPIO-27 (SYS_434)** | **GND**               | GND                      |
-|                          | **GPIO-22 (SYS_442)** | **GPIO-23 (SYS_495)** |                          |
-| 3v3 Power                | **3v3 Power**         | **GPIO-24 (SYS_498)** | UART-WKUP0 TX            |
-| SPI-MCU0 MOSI            | **GPIO-10 (SYS_491)** | **GND**               | GND                      |
-| SPI-MCU0 MISO            | **GPIO-9 (SYS_492)**  | **GPIO-25 (SYS_443)** |                          |
-| SPI-MCU0 SCLK            | **GPIO-11 (SYS_490)** | **GPIO-8 (SYS_488)**  | SPI-MCU0 CS0             |
-| GND                      | **GND**               | **GPIO-7 (SYS_497)**  | UART-WKUP0 RX            |
-| I2C-WKUP0 SDA (Reserved) | **GPIO-0**            | **GPIO-1**            | I2C-WKUP0 SCL (Reserved) |
-| PWM-0A (RCOut-4)         | **GPIO-5 (SYS_343)**  | **GND**               | GND                      |
-| PWM-1A (RCOut-6)         | **GPIO-6 (SYS_345)**  | **GPIO-12 (SYS_344)** | PWM-ECAP0 (RCOut-1)      |
-| PWM-1B (RCOut-7)         | **GPIO-13 (SYS_346)** | **GND**               | GND                      |
-|                          | **GPIO-19 (SYS_340)** | **GPIO-16 (SYS_335)** | PWM-ECAP1 (RCOut-2)      |
-| Buzzer                   | **GPIO-26 (SYS_437)** | **GPIO-20 (SYS_338)** |                          |
-| GND                      | **GND**               | **GPIO-21 (SYS_337)** | FAN                      |
+| FUNCTION                 | PINS                  | PINS                  | FUNCTION                       |
+|-------------------------:|:---------------------:|:---------------------:|:-------------------------------|
+| 3v3 Power                | **3v3 Power**         | **5v Power**          | 5v Power                       |
+| I2C-MCU0 SDA (GPS)       | **GPIO-2 (SYS_506)**  | **5v Power**          | 5v Power                       |
+| I2C-MCU0 SCL (GPS)       | **GPIO-3 (SYS_505)**  | **GND**               | GND                            |
+| UART-MAIN6 RX (GPS)      | **GPIO-4 (SYS_439)**  | **GPIO-14 (SYS_342)** | UART-MAIN1 TX (Telemetry)      |
+| GND                      | **GND**               | **GPIO-15 (SYS_341)** | UART-MAIN1 RX (Telemetry)      |
+| UART-MAIN6 TX (GPS)      | **GPIO-17 (SYS_336)** | **GPIO-18 (SYS_339)** | PWM-ECAP2 (RCOut-3)            |
+|                          | **GPIO-27 (SYS_434)** | **GND**               | GND                            |
+|                          | **GPIO-22 (SYS_442)** | **GPIO-23 (SYS_495)** |                                |
+| 3v3 Power                | **3v3 Power**         | **GPIO-24 (SYS_498)** | UART-WKUP0 TX (SBUS RC Input) |
+| SPI-MCU0 MOSI            | **GPIO-10 (SYS_491)** | **GND**               | GND                            |
+| SPI-MCU0 MISO            | **GPIO-9 (SYS_492)**  | **GPIO-25 (SYS_443)** |                                |
+| SPI-MCU0 SCLK            | **GPIO-11 (SYS_490)** | **GPIO-8 (SYS_488)**  | SPI-MCU0 CS0                   |
+| GND                      | **GND**               | **GPIO-7 (SYS_497)**  | UART-WKUP0 RX (SBUS RC Input) |
+| I2C-WKUP0 SDA (Reserved) | **GPIO-0**            | **GPIO-1**            | I2C-WKUP0 SCL (Reserved)       |
+| PWM-0A (RCOut-4)         | **GPIO-5 (SYS_343)**  | **GND**               | GND                            |
+| PWM-1A (RCOut-6)         | **GPIO-6 (SYS_345)**  | **GPIO-12 (SYS_344)** | PWM-ECAP0 (RCOut-1)            |
+| PWM-1B (RCOut-7)         | **GPIO-13 (SYS_346)** | **GND**               | GND                            |
+|                          | **GPIO-19 (SYS_340)** | **GPIO-16 (SYS_335)** | PWM-ECAP1 (RCOut-2)            |
+| Buzzer                   | **GPIO-26 (SYS_437)** | **GPIO-20 (SYS_338)** |                                |
+| GND                      | **GND**               | **GPIO-21 (SYS_337)** | FAN                            |
 
 - PWM-2A (RCOut-5): PWM pin of the 4-pin FAN header on the board
 

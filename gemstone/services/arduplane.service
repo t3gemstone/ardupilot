@@ -9,7 +9,22 @@ Conflicts=arducopter.service ardurover.service ardusub.service
 [Service]
 EnvironmentFile=/opt/gemstone/ardupilot/ardupilot.env
 
-ExecStart=/bin/bash -c '/opt/gemstone/ardupilot/arduplane ${ARDUPILOT_ARGS}'
+ExecStart=/opt/gemstone/ardupilot/arduplane \
+    $SERIAL0 \
+    $SERIAL1 \
+    $SERIAL2 \
+    $SERIAL3 \
+    $SERIAL4 \
+    $SERIAL5 \
+    $SERIAL6 \
+    $SERIAL7 \
+    $SERIAL8 \
+    $SERIAL9 \
+    $LOG_DIRECTORY \
+    $TERRAIN_DIRECTORY \
+    $STORAGE_DIRECTORY \
+    $MODULE_DIRECTORY \
+    $CPU_AFFINITY
 
 Restart=on-failure
 
