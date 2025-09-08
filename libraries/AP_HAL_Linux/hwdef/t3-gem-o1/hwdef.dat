@@ -2,7 +2,8 @@
 
 # References:
 #   Website: https://www.t3gemstone.org/en
-#   Docs: https://docs.t3gemstone.org/en/boards/o1/introduction
+#   Docs: https://docs.t3gemstone.org/en/projects/vtol
+#   Schematics: https://github.com/t3gemstone/hardware
 
 env TOOLCHAIN aarch64-linux-gnu
 
@@ -41,10 +42,10 @@ LINUX_SPIDEV   "icm20948"   0     3        SPI_MODE_3   8     SPI_CS_KERNEL    4
 LINUX_SPIDEV   "bmp390"     0     1        SPI_MODE_3   8     SPI_CS_KERNEL    10*MHZ   10*MHZ
 
 # Directories:
-define HAL_BOARD_LOG_DIRECTORY "/opt/gemstone/ardupilot/log"
-define HAL_BOARD_TERRAIN_DIRECTORY "/opt/gemstone/ardupilot/terrain"
-define HAL_BOARD_STORAGE_DIRECTORY "/opt/gemstone/ardupilot/storage"
-define HAL_PARAM_DEFAULTS_PATH "/opt/gemstone/ardupilot/ardupilot.parm"
+define HAL_BOARD_LOG_DIRECTORY "/opt/ardupilot/var/log"
+define HAL_BOARD_TERRAIN_DIRECTORY "/opt/ardupilot/var/terrain"
+define HAL_BOARD_STORAGE_DIRECTORY "/opt/ardupilot/var/storage"
+define HAL_PARAM_DEFAULTS_PATH "/opt/ardupilot/etc/ardupilot.parm"
 
 # PWM:
 # 7 hardware PWM channels: 6 from GPIO header, 1 from FAN header
