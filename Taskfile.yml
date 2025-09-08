@@ -18,7 +18,10 @@ env:
   MACHINE: t3-gem-o1
   DISTRO_BASE: ubuntu
   DISTRO_SUITE: jammy
-  VEHICLE: copter
+  VEHICLE: plane
+  BOARD_USER: gemstone
+  BOARD_IP: 192.168.7.2
+  BOARD_DIR: /opt/ardupilot
 
 tasks:
 
@@ -32,6 +35,9 @@ tasks:
       - echo "  DISTRO_BASE  = ${DISTRO_BASE}"
       - echo "  DISTRO_SUITE = ${DISTRO_SUITE}"
       - echo "  VEHICLE      = ${VEHICLE}"
+      - echo "  BOARD_USER   = ${BOARD_USER}"
+      - echo "  BOARD_IP     = ${BOARD_IP}"
+      - echo "  BOARD_DIR    = ${BOARD_DIR}"
       - echo
 
   wget:
@@ -81,6 +87,48 @@ tasks:
         {{ .WAF }} configure --board="${MACHINE}"
         {{ .WAF }} "${VEHICLE}"
         aarch64-linux-gnu-strip "{{ .BUILD_DIR }}/{{ .MACHINE }}/bin/ardu{{ .VEHICLE }}"
+
+  board-setup:
+    desc: 'Prepare T3 Gemstone board for running ArduPilot'
+    silent: true
+    cmds:
+      - |
+        echo -n "${BOARD_USER}@${BOARD_IP}'s password: "
+        read -s BOARD_PASS
+        echo
+        scp -r "build/${MACHINE}/bin" gemstone/* "$BOARD_USER@$BOARD_IP:/tmp/ardupilot"
+        ssh "${BOARD_USER}@${BOARD_IP}" "
+          echo ${BOARD_PASS} | sudo -S -p '' install -d ${BOARD_DIR}/bin ${BOARD_DIR}/etc ${BOARD_DIR}/var
+          echo ${BOARD_PASS} | sudo -S -p '' cp -r /tmp/ardupilot/etc /tmp/ardupilot/bin ${BOARD_DIR}
+          echo ${BOARD_PASS} | sudo -S -p '' cp /tmp/ardupilot/systemd/* /etc/systemd/system
+          echo ${BOARD_PASS} | sudo -S -p '' systemctl daemon-reload
+          echo ${BOARD_PASS} | sudo -S -p '' systemctl enable ardu${VEHICLE}
+          echo ${BOARD_PASS} | sudo -S -p '' sed -i 's/^overlays=.*$/overlays=k3-am67a-t3-gem-o1-spidev0-1cs.dtbo k3-am67a-t3-gem-o1-i2c1-400000.dtbo k3-am67a-t3-gem-o1-uart-ttys0.dtbo k3-am67a-t3-gem-o1-uart-ttys6.dtbo k3-am67a-t3-gem-o1-gpio-fan.dtbo k3-am67a-t3-gem-o1-pwm-ecap0-gpio12.dtbo k3-am67a-t3-gem-o1-pwm-ecap1-gpio16.dtbo k3-am67a-t3-gem-o1-pwm-ecap2-gpio18.dtbo k3-am67a-t3-gem-o1-pwm-epwm0-gpio5.dtbo k3-am67a-t3-gem-o1-pwm-epwm1-gpio6-gpio13.dtbo/' /boot/uEnv.txt
+          sync
+        "
+        echo
+        echo "You must reboot your T3 Gemstone board now!"
+    preconditions:
+      - sh: test -f "build/${MACHINE}/bin/ardu${VEHICLE}"
+        msg: "You must build ArduPilot for your vehicle first: task build"
+
+  board-upload:
+    desc: 'Upload new firmware to T3 Gemstone board'
+    silent: true
+    cmds:
+      - |
+        echo -n "${BOARD_USER}@${BOARD_IP}'s password: "
+        read -s BOARD_PASS
+        echo
+        scp -r "build/${MACHINE}/bin" "$BOARD_USER@$BOARD_IP:/tmp/ardupilot"
+        ssh "${BOARD_USER}@${BOARD_IP}" "
+          echo ${BOARD_PASS} | sudo -S -p '' systemctl stop ardu${VEHICLE}
+          echo ${BOARD_PASS} | sudo -S -p '' cp -r /tmp/ardupilot/bin ${BOARD_DIR}
+          echo ${BOARD_PASS} | sudo -S -p '' systemctl start ardu${VEHICLE}
+        "
+    preconditions:
+      - sh: test -f "build/${MACHINE}/bin/ardu${VEHICLE}"
+        msg: "You must build ArduPilot for your vehicle first: task build"
 
   clean:
     cmds:

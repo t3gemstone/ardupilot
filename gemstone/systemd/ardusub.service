@@ -1,5 +1,5 @@
 [Unit]
-Description=ArduPilot-Sub for t3-gem-o1 Board
+Description=ArduPilot-Sub for T3 Gemstone Boards
 Documentation=https://docs.t3gemstone.org
 
 After=ardupilot-sysconfig.service
@@ -7,9 +7,9 @@ Requires=ardupilot-sysconfig.service
 Conflicts=arducopter.service arduplane.service ardurover.service
 
 [Service]
-EnvironmentFile=/opt/gemstone/ardupilot/ardupilot.env
+EnvironmentFile=/opt/ardupilot/etc/ardupilot.env
 
-ExecStart=/opt/gemstone/ardupilot/ardusub \
+ExecStart=/opt/ardupilot/bin/ardusub \
     $SERIAL0 \
     $SERIAL1 \
     $SERIAL2 \

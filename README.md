@@ -15,18 +15,19 @@
 This repository contains the version of the open-source autopilot called ArduPilot that runs on
 T3 Gemstone development boards.
 
-All details related to the project can be found at https://docs.t3gemstone.org/en/projects/ardupilot. Below, only a summary of how to perform the building is provided.
+All details related to the project can be found at https://docs.t3gemstone.org/en/projects/ardupilot. 
+Below, only a summary of how to perform the building is provided.
 
 ## Build
 
-Run following commands in the host PC:
+Run all commands in the host PC. ArduPilot is cross-compiled for T3 Gemstone boards using T3 Gemstone Toolchains. 
+You can select which vehicle you want to compile by changing the `VEHICLE` variable defined inside `Taskfile.yml`.
 
 ##### 1. Clone the project
 
 ```bash
 git clone https://github.com/t3gemstone/ardupilot
 cd ardupilot
-git checkout pr-t3-gem-o1-linux-board
 git submodule update --init --recursive
 ```
 
@@ -42,55 +43,49 @@ sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/b
 task build
 ```
 
-## Install
+## Board Setup
 
-Run following commands in the host PC:
-
-```bash
-SSH_USER=gemstone
-SSH_IP_ADDR=192.168.7.2
-ssh "$SSH_USER@$SSH_IP_ADDR" "mkdir -p /home/gemstone/ardupilot"
-scp -r gemstone/services "$SSH_USER@$SSH_IP_ADDR":ardupilot
-scp build/t3-gem-o1/bin/arducopter gemstone/{ardupilot.env,ardupilot.parm} "$SSH_USER@$SSH_IP_ADDR":ardupilot
-```
-
-Run following commands in the `t3-gem-o1` board:
+Run following command in the host PC. Board setup is automated via SSH connections.
 
 ```bash
-# Copy arducopter binary and configuration files
-sudo install --directory --owner $USER --group $USER /opt/gemstone/ardupilot
-cp $HOME/ardupilot/{arducopter,ardupilot.env,ardupilot.parm} /opt/gemstone/ardupilot
-
-# Copy systemd service unit file and enable the service
-sudo cp $HOME/ardupilot/services/* /etc/systemd/system
-sudo systemctl daemon-reload
-sudo systemctl enable arducopter
-
-# Update device-tree overlays
-sudo sed -i 's/^overlays=.*$/overlays=k3-am67a-t3-gem-o1-spidev0-1cs.dtbo k3-am67a-t3-gem-o1-i2c1-400000.dtbo k3-am67a-t3-gem-o1-uart-ttys0.dtbo k3-am67a-t3-gem-o1-uart-ttys6.dtbo k3-am67a-t3-gem-o1-gpio-fan.dtbo k3-am67a-t3-gem-o1-pwm-ecap0-gpio12.dtbo k3-am67a-t3-gem-o1-pwm-ecap1-gpio16.dtbo k3-am67a-t3-gem-o1-pwm-ecap2-gpio18.dtbo k3-am67a-t3-gem-o1-pwm-epwm0-gpio5.dtbo k3-am67a-t3-gem-o1-pwm-epwm1-gpio6-gpio13.dtbo/' /boot/uEnv.txt
-
-# Reboot is needed for changes to take effect
-sudo reboot
+task board-setup
 ```
 
-After reboot, Arducopter should start automatically and on-board green LED should be blinking.
-Check ArduPilot docs to learn 
+You need to reboot the board for overlay changes to take effect. After reboot, ArduPilot should start automatically 
+and on-board green LED located to the right of HDMI port should be blinking.
+Check ArduPilot docs to learn
 more about [LEDs meaning](https://ardupilot.org/copter/docs/common-leds-pixhawk.html#boards-with-1-or-2-notify-leds).
 
-## QGroundControl
+## Firmware Upload
 
-You can establish MAVLink ground station connection via serial or UDP. By default `udp:192.168.7.59:14550` and 
-UART-MAIN1 (`/dev/ttyS3`) is used. You can change them by editing the `/opt/gemstone/ardupilot/ardupilot.env` file. 
+If you have done Board Setup once and only want to upload new firmware then run the following commands in the host PC:
 
-Connect RX, TX and GND pins of USB-to-TTL adapter to respective GPIO pins. After you insert the adapter to host PC, a
-new TTY device should be created.
+```bash
+task build
+task board-upload
+```
 
-In the QGroundControl interface, open `Application Settings -> General` menu. There are checkboxes under "AutoConnect to the following devices" heading.
-Uncheck all of them as they prevent you from connecting via UART.
+## QGroundControl (QGC)
 
-Now open `Application Settings -> Comm Links` menu. Click the "Add" button. Select the right serial port and 115200 baud rate.
-After saving the configuration, click "Connect" and exit "Application Settings". MAVLink messages should arrive now and you
-should be able to see the status of the vehicle. You can also add UDP Comm Link from the same menu.
+You can establish MAVLink connection between ArduPilot and QGC via UDP or Serial.
+By default UDP broadcast at 192.168.7.255 subnet and 14550 port is used for `serial0` and UART-MAIN1 (`/dev/ttyS3`)
+is used for `serial1`. You can change them by editing the `/opt/gemstone/ardupilot/ardupilot.env` file.
+
+### UDP Link
+
+Connect T3-GEM-O1 to your PC via USB Type-C cable. T3-GEM-O1 utilizes USB Gadget API to achieve Ethernet-over-USB.
+After board is fully booted, a new Ethernet interface should appear on your PC.
+QGC will automatically connect to ArduPilot via UDP. MAVLink messages should arrive now and you should be able to see
+the status of the vehicle.
+
+### Serial Link
+
+Connect T3-GEM-O1 to your PC via USB Type-C cable. Connect RX, TX and GND pins of USB-to-TTL adapter to respective
+GPIO pins. After you insert the adapter to your PC, a new TTY device should be created.
+Open `Application Settings -> Comm Links` menu in QGC. Click the "Add" button.
+Select the right serial port and 57600 baud rate.
+After saving the configuration, click "Connect" and exit "Application Settings".
+MAVLink messages should arrive now and you should be able to see the status of the vehicle.
 
 ## GPIO Pinout
 
@@ -106,11 +101,11 @@ Following table shows the function of each pin in the GPIO header after applying
 | UART-MAIN6 TX (GPS)      | **GPIO-17 (SYS_336)** | **GPIO-18 (SYS_339)** | PWM-ECAP2 (RCOut-3)            |
 |                          | **GPIO-27 (SYS_434)** | **GND**               | GND                            |
 |                          | **GPIO-22 (SYS_442)** | **GPIO-23 (SYS_495)** |                                |
-| 3v3 Power                | **3v3 Power**         | **GPIO-24 (SYS_498)** | UART-WKUP0 TX (SBUS RC Input) |
+| 3v3 Power                | **3v3 Power**         | **GPIO-24 (SYS_498)** | UART-WKUP0 TX (SBUS RC Input)  |
 | SPI-MCU0 MOSI            | **GPIO-10 (SYS_491)** | **GND**               | GND                            |
 | SPI-MCU0 MISO            | **GPIO-9 (SYS_492)**  | **GPIO-25 (SYS_443)** |                                |
 | SPI-MCU0 SCLK            | **GPIO-11 (SYS_490)** | **GPIO-8 (SYS_488)**  | SPI-MCU0 CS0                   |
-| GND                      | **GND**               | **GPIO-7 (SYS_497)**  | UART-WKUP0 RX (SBUS RC Input) |
+| GND                      | **GND**               | **GPIO-7 (SYS_497)**  | UART-WKUP0 RX (SBUS RC Input)  |
 | I2C-WKUP0 SDA (Reserved) | **GPIO-0**            | **GPIO-1**            | I2C-WKUP0 SCL (Reserved)       |
 | PWM-0A (RCOut-4)         | **GPIO-5 (SYS_343)**  | **GND**               | GND                            |
 | PWM-1A (RCOut-6)         | **GPIO-6 (SYS_345)**  | **GPIO-12 (SYS_344)** | PWM-ECAP0 (RCOut-1)            |
