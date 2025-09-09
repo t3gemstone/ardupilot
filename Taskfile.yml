@@ -96,7 +96,7 @@ tasks:
         echo -n "${BOARD_USER}@${BOARD_IP}'s password: "
         read -s BOARD_PASS
         echo
-        scp -r "build/${MACHINE}/bin" gemstone/* "$BOARD_USER@$BOARD_IP:/tmp/ardupilot"
+        rsync -av --mkpath --checksum "build/${MACHINE}/bin" gemstone/* "$BOARD_USER@$BOARD_IP:/tmp/ardupilot"
         ssh "${BOARD_USER}@${BOARD_IP}" "
           echo ${BOARD_PASS} | sudo -S -p '' install -d ${BOARD_DIR}/bin ${BOARD_DIR}/etc ${BOARD_DIR}/var
           echo ${BOARD_PASS} | sudo -S -p '' cp -r /tmp/ardupilot/etc /tmp/ardupilot/bin ${BOARD_DIR}
@@ -120,7 +120,7 @@ tasks:
         echo -n "${BOARD_USER}@${BOARD_IP}'s password: "
         read -s BOARD_PASS
         echo
-        scp -r "build/${MACHINE}/bin" "$BOARD_USER@$BOARD_IP:/tmp/ardupilot"
+        rsync -av --mkpath --checksum  "build/${MACHINE}/bin" "$BOARD_USER@$BOARD_IP:/tmp/ardupilot"
         ssh "${BOARD_USER}@${BOARD_IP}" "
           echo ${BOARD_PASS} | sudo -S -p '' systemctl stop ardu${VEHICLE}
           echo ${BOARD_PASS} | sudo -S -p '' cp -r /tmp/ardupilot/bin ${BOARD_DIR}

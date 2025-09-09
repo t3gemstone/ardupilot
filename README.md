@@ -75,7 +75,7 @@ task board-upload
 
 You can establish MAVLink connection between ArduPilot and QGC via UDP or Serial.
 By default UDP broadcast at `192.168.7.255` subnet and 14550 port is used for `serial0` and UART-MAIN1 (`/dev/ttyS3`)
-is used for `serial1`. You can change them by editing the `/opt/gemstone/ardupilot/ardupilot.env` file.
+is used for `serial1`. You can change them by editing the `/opt/ardupilot/etc/ardupilot.env` file.
 
 ### UDP Link
 
@@ -92,6 +92,22 @@ After saving the configuration, click "Connect" and exit "Application Settings".
 MAVLink messages should now arrive, and you should be able to see the vehicle's status.
 
 ## Advanced Configuration
+
+### CPU Isolation
+
+Linux supports isolating CPU cores from kernel process scheduler. By isolating cores you can run your real-time 
+applications without any interference from non real-time processes. You can follow these steps to isolate 2 cores 
+(numbered 2 and 3) for ArduPilot:
+
+1. Edit `/boot/uEnv.txt`, add `isolcpus=2,3` to kernel boot parameters.
+
+    `args_mmc=setenv bootargs isolcpus=2,3 console=${console} ...`
+
+2. Edit `/opt/ardupilot/etc/ardupilot.env`, uncomment `CPU_AFFINITY`.
+
+    `CPU_AFFINITY=--cpu-affinity 2,3`
+
+3. Reboot the board.
 
 ## GPIO Pinout
 
