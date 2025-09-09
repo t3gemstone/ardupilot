@@ -45,14 +45,20 @@ task build
 
 ## Board Setup
 
+You should mount the board in your vehicle with the GemStone logo pointing toward the front of the vehicle.
+
+Connect the board to your PC via USB Type-C cable. T3 Gemstone images utilize USB Gadget API to achieve Ethernet-over-USB.
+After board is fully booted, a new Ethernet interface should appear on your PC with automatic IP assigned via DHCP.
+Your board's IP is `192.168.7.2`.
+
 Run following command in the host PC. Board setup is automated via SSH connections.
 
 ```bash
 task board-setup
 ```
 
-You need to reboot the board for overlay changes to take effect. After reboot, ArduPilot should start automatically 
-and on-board green LED located to the right of HDMI port should be blinking.
+You need to reboot the board for overlay changes to take effect. After the reboot, ArduPilot should start automatically 
+and on-board green LED located to the right of the HDMI port should be blinking.
 Check ArduPilot docs to learn
 more about [LEDs meaning](https://ardupilot.org/copter/docs/common-leds-pixhawk.html#boards-with-1-or-2-notify-leds).
 
@@ -68,28 +74,29 @@ task board-upload
 ## QGroundControl (QGC)
 
 You can establish MAVLink connection between ArduPilot and QGC via UDP or Serial.
-By default UDP broadcast at 192.168.7.255 subnet and 14550 port is used for `serial0` and UART-MAIN1 (`/dev/ttyS3`)
+By default UDP broadcast at `192.168.7.255` subnet and 14550 port is used for `serial0` and UART-MAIN1 (`/dev/ttyS3`)
 is used for `serial1`. You can change them by editing the `/opt/gemstone/ardupilot/ardupilot.env` file.
 
 ### UDP Link
 
-Connect T3-GEM-O1 to your PC via USB Type-C cable. T3-GEM-O1 utilizes USB Gadget API to achieve Ethernet-over-USB.
-After board is fully booted, a new Ethernet interface should appear on your PC.
-QGC will automatically connect to ArduPilot via UDP. MAVLink messages should arrive now and you should be able to see
-the status of the vehicle.
+QGC will automatically connect to ArduPilot via UDP if UDP autoconnect is enabled, which it is by default. 
+MAVLink messages should now arrive, and you should be able to see the vehicle's status.
 
 ### Serial Link
 
-Connect T3-GEM-O1 to your PC via USB Type-C cable. Connect RX, TX and GND pins of USB-to-TTL adapter to respective
+Connect RX, TX and GND pins of USB-to-TTL adapter to respective
 GPIO pins. After you insert the adapter to your PC, a new TTY device should be created.
 Open `Application Settings -> Comm Links` menu in QGC. Click the "Add" button.
 Select the right serial port and 57600 baud rate.
 After saving the configuration, click "Connect" and exit "Application Settings".
-MAVLink messages should arrive now and you should be able to see the status of the vehicle.
+MAVLink messages should now arrive, and you should be able to see the vehicle's status.
+
+## Advanced Configuration
 
 ## GPIO Pinout
 
-Following table shows the function of each pin in the GPIO header after applying device-tree overlays.
+The following table shows the function of each pin in the GPIO header after applying devicetree overlays. The table
+assumes the board is oriented so that you can see the GemStone logo upright. 
 
 | FUNCTION                 | PINS                  | PINS                  | FUNCTION                       |
 |-------------------------:|:---------------------:|:---------------------:|:-------------------------------|
