@@ -86,7 +86,7 @@ tasks:
         export PATH="{{ .VENV_DIR }}/bin:$PATH"
         {{ .WAF }} configure --board="${MACHINE}"
         {{ .WAF }} "${VEHICLE}"
-        aarch64-linux-gnu-strip "{{ .BUILD_DIR }}/{{ .MACHINE }}/bin/ardu{{ .VEHICLE }}"
+        aarch64-linux-gnu-strip "{{ .BUILD_DIR }}/{{ .MACHINE }}/bin/ardu${VEHICLE}"
 
   board-setup:
     desc: 'Prepare T3 Gemstone board for running ArduPilot'
