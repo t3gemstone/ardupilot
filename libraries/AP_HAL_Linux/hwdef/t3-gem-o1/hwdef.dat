@@ -1,8 +1,8 @@
 # T3 Gemstone O1
 
 # References:
-#   Website: https://www.t3gemstone.org/en
-#   Docs: https://docs.t3gemstone.org/en/projects/vtol
+#   Website:    https://www.t3gemstone.org/en
+#   Docs:       https://docs.t3gemstone.org/en/projects/vtol
 #   Schematics: https://github.com/t3gemstone/hardware
 
 env TOOLCHAIN aarch64-linux-gnu
@@ -15,7 +15,7 @@ define INS_MAX_INSTANCES 3
 COMPASS AK09916:probe_ICM20948 0 ROTATION_ROLL_180
 define HAL_PROBE_EXTERNAL_I2C_COMPASSES 1
 
-# Baro:
+# Baro: BMP390
 BARO BMP388 SPI:bmp390
 
 # CAN: TCAN1462-Q1
@@ -36,6 +36,17 @@ define HAL_GPIO_LED_ON    1
 define AP_NOTIFY_BUZZER_ENABLED 1
 define HAL_BUZZER_PIN 26
 
+# PWM:
+# 7 hardware PWM channels: 6 from GPIO header, 1 from FAN header
+
+# ADC: External ADS1115
+
+# I2C:
+# /dev/i2c-1 is the only i2c exposed on a header
+define HAL_LINUX_I2C_EXTERNAL_BUS_MASK 1 << 1
+# Don't probe internal buses
+define HAL_LINUX_I2C_INTERNAL_BUS_MASK 0
+
 # SPI:
 #              NAME         BUS   SUBDEV   MODE         BPW   CS_PIN           LOWSPD   HIGHSPD
 LINUX_SPIDEV   "icm20948"   0     3        SPI_MODE_3   8     SPI_CS_KERNEL    4*MHZ    8*MHZ
@@ -46,11 +57,6 @@ define HAL_BOARD_LOG_DIRECTORY "/opt/ardupilot/var/log"
 define HAL_BOARD_TERRAIN_DIRECTORY "/opt/ardupilot/var/terrain"
 define HAL_BOARD_STORAGE_DIRECTORY "/opt/ardupilot/var/storage"
 define HAL_PARAM_DEFAULTS_PATH "/opt/ardupilot/etc/ardupilot.parm"
-
-# PWM:
-# 7 hardware PWM channels: 6 from GPIO header, 1 from FAN header
-
-# ADC: External ADS1115
 
 // FIXME: use of this define should go away:
 define CONFIG_HAL_BOARD_SUBTYPE HAL_BOARD_SUBTYPE_LINUX_T3_GEM_O1
