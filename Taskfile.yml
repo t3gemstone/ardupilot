@@ -22,10 +22,9 @@ env:
   BOARD_USER: gemstone
   BOARD_IP: 192.168.7.2
   BOARD_DIR: /opt/ardupilot
-  SITL_LOCATION: --location ARDUCOPTER_AUTOTEST
-  SITL_VEHICLE: --vehicle ArduPlane
-  SITL_FRAME: # --frame
-  SITL_PARAM: --add-param-file skywalker_x8_quad.param
+  SITL_LOCATION: ARDUCOPTER_AUTOTEST
+  SITL_VEHICLE: ArduPlane
+  SITL_FRAME: gazebo-skywalker-x8-quad
   SITL_WORLD: skywalker_x8_quad_runway.sdf
 
 tasks:
@@ -46,7 +45,6 @@ tasks:
       - echo "  SITL_LOCATION = ${SITL_LOCATION}"
       - echo "  SITL_VEHICLE  = ${SITL_VEHICLE}"
       - echo "  SITL_FRAME    = ${SITL_FRAME}"
-      - echo "  SITL_PARAM    = ${SITL_PARAM}"
       - echo "  SITL_WORLD    = ${SITL_WORLD}"
       - echo
 
@@ -160,17 +158,13 @@ tasks:
   sitl-start:
     cmds:
       - xhost +local:docker
-      - docker compose -f gemstone/docker/compose.yaml up --detach
+      - docker compose up --detach
 
   sitl-stop:
     cmds:
-      - docker compose -f gemstone/docker/compose.yaml kill
-      - docker compose -f gemstone/docker/compose.yaml down --remove-orphans
+      - docker compose kill
+      - docker compose down --remove-orphans
       - xhost -local:docker
-
-  sitl-restart-mp:
-    cmds:
-      - docker compose -f gemstone/docker/compose.yaml restart mission-planner
 
   clean:
     cmds:

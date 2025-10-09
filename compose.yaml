@@ -2,7 +2,7 @@ services:
   qgroundcontrol:
     image: t3gemstone/qgroundcontrol
     build:
-      context: ./qgroundcontrol
+      dockerfile: ./Dockerfile.qgroundcontrol
     hostname: qgroundcontrol
     privileged: true
     stdin_open: true
@@ -21,7 +21,7 @@ services:
   ardupilot-sitl:
     image: t3gemstone/ardupilot-sitl
     build:
-      context: ./ardupilot-sitl
+      dockerfile: ./Dockerfile.ardupilot-sitl
     hostname: ardupilot-sitl
     stdin_open: true
     tty: true
@@ -29,17 +29,16 @@ services:
       AP_INSTANCE: "--instance 0"
       AP_SPEEDUP: "--speedup 1"
       AP_MODEL: "--model JSON"
-      AP_FRAME: "${SITL_FRAME}"
-      AP_LOCATION: "${SITL_LOCATION}"
-      AP_VEHICLE: "${SITL_VEHICLE}"
-      AP_PARAM: "${SITL_PARAM}"
+      AP_VEHICLE: "--vehicle ${SITL_VEHICLE}"
+      AP_FRAME: "--frame ${SITL_FRAME}"
+      AP_LOCATION: "--location ${SITL_LOCATION}"
     network_mode: host
     restart: always
 
   gazebo:
     image: t3gemstone/gazebo
     build:
-      context: ./gazebo
+      dockerfile: ./Dockerfile.gazebo
     hostname: gazebo
     stdin_open: true
     tty: true
