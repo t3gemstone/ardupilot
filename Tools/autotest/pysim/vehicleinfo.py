@@ -235,6 +235,16 @@ class VehicleInfo(object):
                     "models/freestyle.param",
                 ],
             },
+            "gazebo-bicopter": {
+                "waf_target": "bin/arducopter",
+                "default_params_filename": "gazebo_params/bicopter.param",
+            },
+            "gazebo-hexapod-copter": {
+                "waf_target": "bin/arducopter",
+                "default_params_filename": ["default_params/copter.parm",
+                                            "default_params/copter-hexa.parm",
+                                            "gazebo_params/hexapod_copter.param"],
+            },
         },
     },
     "Helicopter": {
@@ -407,6 +417,35 @@ class VehicleInfo(object):
                 "waf_target": "bin/arduplane",
                 "default_params_filename": "default_params/stratoblimp.parm",
             },
+            "gazebo-alti-transition-quad": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "gazebo_params/alti_transition_quad.param",
+            },
+            "gazebo-skycat-tvbs": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "gazebo_params/skycat_tvbs.param",
+            },
+            "gazebo-skywalker-x8": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "gazebo_params/skywalker_x8.param",
+            },
+            "gazebo-skywalker-x8-quad": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "gazebo_params/skywalker_x8_quad.param",
+            },
+            "gazebo-swan-k1-hwing": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "gazebo_params/swan_k1_hwing.param",
+            },
+            "gazebo-wsc-aircraft": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "gazebo_params/wsc_aircraft.param",
+            },
+            "gazebo-mini-talon-vtail": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": ["models/plane.parm",
+                                            "gazebo_params/mini_talon_vtail.param"],
+            },
         },
     },
     "Rover": {
@@ -474,6 +513,47 @@ class VehicleInfo(object):
             "calibration": {
                 "extra_mavlink_cmds": "module load sitl_calibration;",
                 "external": True,
+            },
+            "gazebo-r1-rover": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": ["default_params/rover.parm",
+                                            "default_params/rover-skid.parm",
+                                            "gazebo_params/r1_rover.param"],
+            },
+            "gazebo-blueboat": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": ["default_params/rover.parm",
+                                            "default_params/rover-skid.parm"
+                                            "gazebo_params/blueboat.param"],
+            },
+            "gazebo-catamaran": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": "gazebo_params/catamaran.param",
+            },
+            "gazebo-daf-xf-450-tractor": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": "gazebo_params/daf_xf_450_tractor.param",
+            },
+            "gazebo-omni3rover": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": "gazebo_params/omni3rover.param",
+            },
+            "gazebo-omni4rover": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": "gazebo_params/omni4rover.param",
+            },
+            "gazebo-quadruped": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": "gazebo_params/quadruped.param",
+            },
+            "gazebo-sawppy": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": "gazebo_params/sawppy.param",
+            },
+            "gazebo-wild-thumper": {
+                "waf_target": "bin/ardurover",
+                "default_params_filename": ["default_params/rover.parm",
+                                            "default_params/rover-skid.parm"],
             },
         },
     },
