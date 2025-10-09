@@ -67,14 +67,15 @@ VEHICLE=plane task build board-upload
 
 ## Software-in-the-Loop (SITL)
 
-This repository includes a complete SITL environment for ArduPilot development and testing, orchestrated through Docker Compose. The setup integrates ArduPilot SITL with MissionPlanner and Gazebo simulation for realistic vehicle testing.
+This repository includes a complete SITL environment for ArduPilot development and testing, orchestrated through Docker
+Compose. The setup integrates ArduPilot SITL with QGroundControl and Gazebo simulation for realistic vehicle testing.
 
 ### Architecture
 
 The SITL environment consists of three containerized services:
 
 - **ArduPilot SITL**: Flight controller simulation running your vehicle firmware
-- **MissionPlanner**: Ground control station for mission planning and monitoring
+- **QGroundControl**: Ground control station for mission planning and monitoring
 - **Gazebo**: 3D physics simulation environment for realistic vehicle dynamics
 
 ### Quick Start
@@ -127,12 +128,7 @@ For some vehicles you need to specify both SITL_FRAME and SITL_PARAM. Some vehic
 
 ### Connecting to SITL
 
-On Mission Planner, the connection are set up using the drop down boxes in the upper right portion of the screen.
-Select UDP from that list and click "Connect". It asks for UDP port, accept the default value which is **14550**.
-Mission Planner will connect to SITL instance. 
-
-Mission Planner is a Windows native app that runs with Mono runtime on Linux. Sometimes it can become unresponsive.
-When it becomes unresponsive you can restart it with `task sitl-restart-mp` command.
+QGroundControl automatically connects to **14550** UDP port.
 
 ### Applying Configuration Changes
 

@@ -1,8 +1,12 @@
 services:
-  mission-planner:
-    image: ghcr.io/iftahnaf/linux_mission_planner
-    hostname: mission-planner
+  qgroundcontrol:
+    image: t3gemstone/qgroundcontrol
+    build:
+      context: ./qgroundcontrol
+    hostname: qgroundcontrol
     privileged: true
+    stdin_open: true
+    tty: true
     environment:
       DISPLAY: "${DISPLAY}"
       QT_X11_NO_MITSHM: 1
@@ -13,12 +17,6 @@ services:
       - 'c *:* rmw'
     network_mode: host
     restart: always
-    healthcheck:
-      test: ["CMD", "sleep", "5"]
-      timeout: 10s
-      interval: 1s
-      start_period: 0s
-      retries: 5
 
   ardupilot-sitl:
     image: t3gemstone/ardupilot-sitl
@@ -37,9 +35,6 @@ services:
       AP_PARAM: "${SITL_PARAM}"
     network_mode: host
     restart: always
-    depends_on:
-      mission-planner:
-        condition: service_healthy
 
   gazebo:
     image: t3gemstone/gazebo
@@ -59,6 +54,3 @@ services:
       - 'c *:* rmw'
     network_mode: host
     restart: always
-    depends_on:
-      mission-planner:
-        condition: service_healthy
