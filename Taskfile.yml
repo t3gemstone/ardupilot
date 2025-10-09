@@ -22,6 +22,11 @@ env:
   BOARD_USER: gemstone
   BOARD_IP: 192.168.7.2
   BOARD_DIR: /opt/ardupilot
+  SITL_LOCATION: --location ARDUCOPTER_AUTOTEST
+  SITL_VEHICLE: --vehicle ArduPlane
+  SITL_FRAME: # --frame
+  SITL_PARAM: --add-param-file skywalker_x8_quad.param
+  SITL_WORLD: skywalker_x8_quad_runway.sdf
 
 tasks:
 
@@ -31,13 +36,18 @@ tasks:
       - task --list-all --summary
       - echo
       - echo "Environment:"
-      - echo "  MACHINE      = ${MACHINE}"
-      - echo "  DISTRO_BASE  = ${DISTRO_BASE}"
-      - echo "  DISTRO_SUITE = ${DISTRO_SUITE}"
-      - echo "  VEHICLE      = ${VEHICLE}"
-      - echo "  BOARD_USER   = ${BOARD_USER}"
-      - echo "  BOARD_IP     = ${BOARD_IP}"
-      - echo "  BOARD_DIR    = ${BOARD_DIR}"
+      - echo "  MACHINE       = ${MACHINE}"
+      - echo "  DISTRO_BASE   = ${DISTRO_BASE}"
+      - echo "  DISTRO_SUITE  = ${DISTRO_SUITE}"
+      - echo "  VEHICLE       = ${VEHICLE}"
+      - echo "  BOARD_USER    = ${BOARD_USER}"
+      - echo "  BOARD_IP      = ${BOARD_IP}"
+      - echo "  BOARD_DIR     = ${BOARD_DIR}"
+      - echo "  SITL_LOCATION = ${SITL_LOCATION}"
+      - echo "  SITL_VEHICLE  = ${SITL_VEHICLE}"
+      - echo "  SITL_FRAME    = ${SITL_FRAME}"
+      - echo "  SITL_PARAM    = ${SITL_PARAM}"
+      - echo "  SITL_WORLD    = ${SITL_WORLD}"
       - echo
 
   wget:
@@ -146,6 +156,21 @@ tasks:
         msg: "You must install sshpass"
       - sh: command -v rsync
         msg: "You must install rsync"
+
+  sitl-start:
+    cmds:
+      - xhost +local:docker
+      - docker compose -f gemstone/docker/compose.yaml up --detach
+
+  sitl-stop:
+    cmds:
+      - docker compose -f gemstone/docker/compose.yaml kill
+      - docker compose -f gemstone/docker/compose.yaml down --remove-orphans
+      - xhost -local:docker
+
+  sitl-restart-mp:
+    cmds:
+      - docker compose -f gemstone/docker/compose.yaml restart mission-planner
 
   clean:
     cmds:

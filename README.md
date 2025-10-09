@@ -64,3 +64,83 @@ If you have done Board Setup once and only want to upload new firmware then run 
 ```bash
 VEHICLE=plane task build board-upload
 ```
+
+## Software-in-the-Loop (SITL)
+
+This repository includes a complete SITL environment for ArduPilot development and testing, orchestrated through Docker Compose. The setup integrates ArduPilot SITL with MissionPlanner and Gazebo simulation for realistic vehicle testing.
+
+### Architecture
+
+The SITL environment consists of three containerized services:
+
+- **ArduPilot SITL**: Flight controller simulation running your vehicle firmware
+- **MissionPlanner**: Ground control station for mission planning and monitoring
+- **Gazebo**: 3D physics simulation environment for realistic vehicle dynamics
+
+### Quick Start
+
+Start the SITL environment:
+```bash
+task sitl-start
+```
+
+Stop the SITL environment:
+```bash
+task sitl-stop
+```
+
+### Configuration
+
+SITL parameters are configured in the Taskfile:
+
+```yaml
+  SITL_LOCATION: --location ARDUCOPTER_AUTOTEST
+  SITL_VEHICLE: --vehicle ArduPlane
+  SITL_FRAME: # --frame
+  SITL_PARAM: --add-param-file skywalker_x8_quad.param
+  SITL_WORLD: skywalker_x8_quad_runway.sdf
+```
+
+#### Available Configuration Options
+
+**SITL_LOCATION**: Starting location for the simulated vehicle
+- Find available locations in [ArduPilot locations.txt](https://github.com/ArduPilot/ardupilot/blob/master/Tools/autotest/locations.txt)
+- Examples: `ARDUCOPTER_AUTOTEST`, `KSFO`, `CMAC`
+
+**SITL_VEHICLE**: Vehicle type to simulate
+- Find available vehicles and their parameters in [SITL_Models documentation](https://github.com/ArduPilot/SITL_Models/tree/master/Gazebo/docs)
+- Examples: `ArduPlane`, `ArduCopter`, `ArduSub`, `Rover`
+
+**SITL_FRAME**: Frame type for vehicle configuration
+- Find available frame types in [ArduPilot documentation](https://github.com/ArduPilot/ardupilot/blob/master/Tools/autotest/pysim/vehicleinfo.py)
+- Examples: `gazebo-iris`, `gazebo-zephyr`
+
+**SITL_PARAM**: Parameter file for vehicle configuration
+- Find available parameter files in [SITL_Models documentation](https://github.com/ArduPilot/SITL_Models/tree/master/Gazebo/docs)
+- Examples: `skywalker_x8_quad.param`, `skywalker_x8.param`
+
+**SITL_WORLD**: Gazebo world file for simulation environment
+- Find available worlds in [SITL_Models worlds directory](https://github.com/ArduPilot/SITL_Models/tree/master/Gazebo/worlds)
+- Examples: `skywalker_x8_quad_runway.sdf`, `skywalker_x8_runway.sdf`
+
+For some vehicles you need to specify both SITL_FRAME and SITL_PARAM. Some vehicles use only one and some omit both.
+
+### Connecting to SITL
+
+On Mission Planner, the connection are set up using the drop down boxes in the upper right portion of the screen.
+Select UDP from that list and click "Connect". It asks for UDP port, accept the default value which is **14550**.
+Mission Planner will connect to SITL instance. 
+
+Mission Planner is a Windows native app that runs with Mono runtime on Linux. Sometimes it can become unresponsive.
+When it becomes unresponsive you can restart it with `task sitl-restart-mp` command.
+
+### Applying Configuration Changes
+
+After modifying any SITL variables in the Taskfile, restart the environment:
+
+```bash
+task sitl-start
+```
+
+The Docker Compose configuration will automatically pick up the new environment variables and restart the services with
+the updated settings.
