@@ -67,6 +67,8 @@ VEHICLE=plane task build board-upload
 
 ## Software-in-the-Loop (SITL)
 
+[![SITL](.meta/youtube.png)](https://www.youtube.com/watch?v=wU4kDhm9MoE)
+
 This repository includes a complete SITL environment for ArduPilot development and testing, orchestrated through Docker
 Compose. The setup integrates ArduPilot SITL with QGroundControl and Gazebo simulation for realistic vehicle testing.
 
