@@ -2732,38 +2732,46 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         self.change_mode('LOITER')
 
-        # ensure OPTICAL_FLOW message is reasonable:
-        global flow_rate_rads
-        global rangefinder_distance
-        global gps_speed
-        global last_debug_time
-        flow_rate_rads = 0
-        rangefinder_distance = 0
-        gps_speed = 0
-        last_debug_time = 0
+        class CheckOpticalFlow(vehicle_test_suite.TestSuite.MessageHook):
+            '''ensures OPTICAL_FLOW data matches other data'''
+            def __init__(self, suite):
+                super().__init__(suite)
 
-        def check_optical_flow(mav, m):
-            global flow_rate_rads
-            global rangefinder_distance
-            global gps_speed
-            global last_debug_time
-            m_type = m.get_type()
-            if m_type == "OPTICAL_FLOW":
-                flow_rate_rads = math.sqrt(m.flow_comp_m_x**2+m.flow_comp_m_y**2)
-            elif m_type == "RANGEFINDER":
-                rangefinder_distance = m.distance
-            elif m_type == "GPS_RAW_INT":
-                gps_speed = m.vel/100.0  # cm/s -> m/s
-            of_speed = flow_rate_rads * rangefinder_distance
-            if abs(of_speed - gps_speed) > 3:
-                raise NotAchievedException("gps=%f vs of=%f mismatch" %
-                                           (gps_speed, of_speed))
+                self.flow_rate_rads = 0
+                self.rangefinder_distance = 0
+                self.gps_speed = 0
+                self.last_debug_time = 0
+                self.distance_sensor_distance = 0
 
-            now = self.get_sim_time_cached()
-            if now - last_debug_time > 5:
-                last_debug_time = now
-                self.progress("gps=%f of=%f" % (gps_speed, of_speed))
+            def progress_prefix(self):
+                return "COF: "
 
+            def process(self, mav, m):
+                m_type = m.get_type()
+                if m_type == "OPTICAL_FLOW":
+                    self.flow_rate_rads = math.sqrt(m.flow_comp_m_x**2+m.flow_comp_m_y**2)
+                elif m_type == "RANGEFINDER":
+                    self.rangefinder_distance = m.distance
+                elif m_type == "DISTANCE_SENSOR":
+                    self.distance_sensor_distance = m.current_distance * 0.01
+                elif m_type == "GPS_RAW_INT":
+                    self.gps_speed = m.vel/100.0  # cm/s -> m/s
+
+                of_speed = self.flow_rate_rads * self.rangefinder_distance
+                if abs(of_speed - self.gps_speed) > 3:
+                    raise NotAchievedException(f"gps={self.gps_speed} vs of={of_speed} mismatch")
+                of_speed = self.flow_rate_rads * self.distance_sensor_distance
+                if abs(of_speed - self.gps_speed) > 3:
+                    raise NotAchievedException(f"gps={self.gps_speed} vs of={of_speed} mismatch")
+
+                now = self.suite.get_sim_time_cached()
+                if now - self.last_debug_time > 5:
+                    self.last_debug_time = now
+                    self.progress(f"gps={self.gps_speed} of={of_speed}")
+
+        self.context_set_message_rate_hz('RANGEFINDER', self.sitl_streamrate())
+
+        check_optical_flow = CheckOpticalFlow(self)
         self.install_message_hook_context(check_optical_flow)
 
         self.fly_generic_mission("CMAC-copter-navtest.txt")
@@ -4333,6 +4341,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
     def RangeFinder(self):
         '''Test RangeFinder Basic Functionality'''
         self.assert_not_receiving_message('RANGEFINDER', timeout=5)
+        self.assert_not_receiving_message('DISTANCE_SENSOR', timeout=5)
 
         # may need to force a rotation if some other test has used the
         # rangefinder...
@@ -4348,7 +4357,11 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.reboot_sitl()
 
         self.progress("Making sure we now get RANGEFINDER messages")
+        self.context_set_message_rate_hz('RANGEFINDER', self.sitl_streamrate())
         m = self.assert_receive_message('RANGEFINDER', timeout=10)
+
+        self.progress("Making sure we now get DISTANCE_SENSOR messages")
+        self.assert_receive_message('DISTANCE_SENSOR', timeout=10)
 
         self.progress("Checking RangeFinder is marked as enabled in mavlink")
         m = self.assert_receive_message('SYS_STATUS', timeout=10)
@@ -4374,13 +4387,19 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         self.takeoff(10, mode="LOITER")
 
-        m_r = self.assert_receive_message('RANGEFINDER')
         m_p = self.assert_receive_message('GLOBAL_POSITION_INT')
 
+        m_r = self.assert_receive_message('RANGEFINDER')
         if abs(m_r.distance - m_p.relative_alt/1000) > 1:
             raise NotAchievedException(
-                "rangefinder/global position int mismatch %0.2f vs %0.2f" %
+                "RANGEFINDER/GLOBAL_POSITION_INT mismatch %0.2f vs %0.2f" %
                 (m_r.distance, m_p.relative_alt/1000))
+
+        m_ds = self.assert_receive_message('DISTANCE_SENSOR')
+        if abs(m_ds.current_distance * 0.01 - m_p.relative_alt/1000) > 1:
+            raise NotAchievedException(
+                "DISTANCE_SENSOR/GLOBAL_POSITION_INT mismatch %0.2f vs %0.2f" %
+                (m_ds.current_distance*0.01, m_p.relative_alt/1000))
 
         self.land_and_disarm()
 
@@ -9555,13 +9574,13 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         # Monitor behavior for 10 seconds
         tstart = self.get_sim_time()
-        initial_alt = self.get_altitude()
+        initial_alt = self.get_altitude(altitude_source='SIM_STATE.alt')
         self.progress(f"initial_alt={initial_alt}")
         stuck = True  # Assume it's stuck unless proven otherwise
 
         while self.get_sim_time() - tstart < 10:
             # Fetch current altitude
-            current_alt = self.get_altitude()
+            current_alt = self.get_altitude(altitude_source='SIM_STATE.alt')
             self.progress(f"current_alt={current_alt}")
 
             # Fetch and log battery status
@@ -9585,10 +9604,10 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         '''ensure rangefinder gives height-above-ground'''
         expected_alt = 5
         self.takeoff(expected_alt, mode='GUIDED', alt_minimum_duration=5)
-        rf = self.assert_receive_message("RANGEFINDER")
+        ds = self.assert_receive_message("DISTANCE_SENSOR")
         gpi = self.assert_receive_message('GLOBAL_POSITION_INT')
-        delta = abs(rf.distance - gpi.relative_alt/1000.0)
-        alt_msg = f"{rf.distance=} disagrees with global-position-int.relative_alt ({gpi.relative_alt/1000.0}) by {delta}m"
+        delta = abs(ds.current_distance*0.01 - gpi.relative_alt/1000.0)
+        alt_msg = f"{ds.current_distance*0.01=} disagrees with global-position-int.relative_alt ({gpi.relative_alt/1000.0}) by {delta}m"  # NOQA:E501
         self.progress(alt_msg)
         self.progress(f"Terrain report: {self.mav.messages['TERRAIN_REPORT']}")
         if delta > 1:
@@ -9924,6 +9943,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         expected_alt = 5
         self.user_takeoff(alt_min=expected_alt)
 
+        self.context_push()
+        self.context_set_message_rate_hz('RANGEFINDER', self.sitl_streamrate())
+
         tstart = self.get_sim_time()
         while True:
             if self.get_sim_time() - tstart > 5:
@@ -9931,17 +9953,20 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             rf = self.assert_receive_message("RANGEFINDER")
             gpi = self.assert_receive_message('GLOBAL_POSITION_INT')
             if abs(rf.distance - gpi.relative_alt/1000.0) > 1:
-                print("rangefinder alt (%s) disagrees with global-position-int.relative_alt (%s)" %
-                      (rf.distance, gpi.relative_alt/1000.0))
+                self.progress("rangefinder alt (%s) disagrees with global-position-int.relative_alt (%s)" %
+                              (rf.distance, gpi.relative_alt/1000.0))
                 continue
 
             ds = self.assert_receive_message("DISTANCE_SENSOR", timeout=2, verbose=True)
             if abs(ds.current_distance/100.0 - gpi.relative_alt/1000.0) > 1:
-                print(
+                self.progress(
                     "distance sensor.current_distance (%f) disagrees with global-position-int.relative_alt (%s)" %
                     (ds.current_distance/100.0, gpi.relative_alt/1000.0))
                 continue
             break
+
+        self.context_pop()
+
         self.progress("mavlink rangefinder OK")
         self.land_and_disarm()
 
@@ -10114,6 +10139,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.customise_SITL_commandline([
             "--serial4=sim:lightwareserial",
         ])
+        self.context_set_message_rate_hz('RANGEFINDER', self.sitl_streamrate())
         self.takeoff(95, mode='GUIDED', timeout=240, max_err=0.5)
         self.assert_rangefinder_distance_between(90, 100)
 
@@ -10158,7 +10184,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.assert_sensor_state(rf_bit, present=True, enabled=True, healthy=True)
         m = self.assert_receive_message('DISTANCE_SENSOR', verbose=True)
         if abs(m.current_distance * 0.01 - alt) > 1:
-            raise NotAchievedException(f"Expected {alt}m range")
+            raise NotAchievedException(f"Expected {alt}m range got range={m.current_distance * 0.01}")
         self.assert_parameter_value("RNGFND1_MAX", m.max_distance * 0.01, epsilon=0.00001)
         self.assert_parameter_value("RNGFND1_MIN", m.min_distance * 0.01, epsilon=0.00001)
 
@@ -13610,6 +13636,42 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.context_pop()
         self.reboot_sitl()
 
+    def GripperInitialPosition(self):
+        '''test gripper initial position'''
+
+        self.set_servo_gripper_parameters()
+        self.set_parameters({
+            "RC8_OPTION": 19,  # gripper
+        })
+        grip_neutral = 1423
+        self.set_parameter('GRIP_NEUTRAL', grip_neutral)
+
+        # install a message hook which ensures that the output stays at neutral
+        global seen_grip_neutral
+        seen_grip_neutral = False
+
+        def hook(mav, m):
+            global seen_grip_neutral
+            if m.get_type() != 'SERVO_OUTPUT_RAW':
+                return
+            if m.servo8_raw == 0:
+                # initial value
+                if seen_grip_neutral:
+                    raise NotAchievedException("Saw 0 after seeing grip neutral")
+                return
+            if m.servo8_raw == grip_neutral:
+                # expected value after autopilot boot
+                seen_grip_neutral = True
+                return
+            raise NotAchievedException(f"Received bad value {m.servo8_raw=} for servo gripper")
+        self.install_message_hook_context(hook)
+
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        if not seen_grip_neutral:
+            raise NotAchievedException("Never saw grip neutral")
+
     def REQUIRE_LOCATION_FOR_ARMING(self):
         '''check AP_Arming::Option::REQUIRE_LOCATION_FOR_ARMING works'''
         self.context_push()
@@ -14277,11 +14339,24 @@ RTL_ALT 111
 
     def LuaParamSet(self):
         '''test param-set.lua applet'''
-        self.install_applet_script_context("param-set.lua")
         self.set_parameters({
             'SCR_ENABLE': 1,
         })
+
+        self.context_push()
+
+        self.install_applet_script_context("param-set.lua")
         self.reboot_sitl()
+
+        # collect original parameter values for everything other than
+        # SCR_ENABLE and PARAM_SET_ENABLE.  This resolves an issue at
+        # the end of the test where the popped context wants to set
+        # PARAM_SET_ENABLE back to its original value (enabled!),
+        # which can cause problems resetting
+        orig_parameter_values = self.get_parameters([
+            'RTL_ALT',
+            'DISARM_DELAY',
+        ])
 
         self.wait_ready_to_arm()  # scripts will be ready by now!
         self.start_subtest("set RTL_ALT freely")
@@ -14291,9 +14366,17 @@ RTL_ALT 111
         self.start_subtest("Unable to set DISARM_DELAY freely")
         self.context_push()
         self.context_collect('STATUSTEXT')
+        self.context_collect('PARAM_ERROR')
         old_disarm_delay_value = self.get_parameter('DISARM_DELAY')
         self.send_set_parameter_direct('DISARM_DELAY', 78)
         self.wait_statustext('param-set: param set denied (DISARM_DELAY)', check_context=True)
+        self.assert_received_message_field_values('PARAM_ERROR', {
+            "target_system": 250,
+            "target_component": 250,
+            "param_id": 'DISARM_DELAY',
+            "param_index": -1,
+            "error": mavutil.mavlink.MAV_PARAM_ERROR_PERMISSION_DENIED,
+        }, check_context=True, very_verbose=True)
         self.assert_parameter_value('DISARM_DELAY', old_disarm_delay_value)
         self.context_pop()
 
@@ -14304,10 +14387,18 @@ RTL_ALT 111
         self.start_subtest("Re-enabling applet via parameter should stop freely setting DISARM_DELAY")
         self.context_push()
         self.context_collect('STATUSTEXT')
+        self.context_collect('PARAM_ERROR')
         self.set_parameter("PARAM_SET_ENABLE", 1)
         old_disarm_delay_value = self.get_parameter('DISARM_DELAY')
         self.send_set_parameter_direct('DISARM_DELAY', 78)
         self.wait_statustext('param-set: param set denied (DISARM_DELAY)', check_context=True)
+        self.assert_received_message_field_values('PARAM_ERROR', {
+            "target_system": 250,
+            "target_component": 250,
+            "param_id": 'DISARM_DELAY',
+            "param_index": -1,
+            "error": mavutil.mavlink.MAV_PARAM_ERROR_PERMISSION_DENIED,
+        }, check_context=True, very_verbose=True)
         self.assert_parameter_value('DISARM_DELAY', old_disarm_delay_value)
         self.context_pop()
 
@@ -14316,8 +14407,13 @@ RTL_ALT 111
         self.reboot_sitl()
         self.assert_parameter_value('DISARM_DELAY', 111)
 
-        # very bad things happen if we don't turn things off at the end..
-        self.set_parameter("PARAM_SET_ENABLE", 0)
+        # set parameters to their original value so the following
+        # context pop should only need to set PARAM_SET_ENABLE back to
+        # its default value of 1.  That prevents permission errors
+        # created by param-set.lua!
+        self.set_parameters(orig_parameter_values)
+
+        self.context_pop()
 
     def do_land(self):
         self.change_mode('LAND')
@@ -14839,6 +14935,7 @@ return update, 1000
             self.LUAConfigProfile,
             self.Clamp,
             self.GripperReleaseOnThrustLoss,
+            self.GripperInitialPosition,
             self.REQUIRE_LOCATION_FOR_ARMING,
             self.LoggingFormat,
             self.MissionRTLYawBehaviour,

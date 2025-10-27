@@ -9,7 +9,6 @@ env TOOLCHAIN aarch64-linux-gnu
 
 # IMU: ICM-20948
 IMU Invensensev2 SPI:icm20948 ROTATION_ROLL_180_YAW_90
-define INS_MAX_INSTANCES 3
 
 # Compass: AK09916
 COMPASS AK09916:probe_ICM20948 0 ROTATION_ROLL_180
@@ -35,11 +34,6 @@ define HAL_GPIO_LED_ON    1
 # Buzzer:
 define AP_NOTIFY_BUZZER_ENABLED 1
 define HAL_BUZZER_PIN 26
-
-# PWM:
-# 7 hardware PWM channels accessed from 40-pin GPIO header
-
-# Battery Monitor: ADS1115 connected via i2c-1 at 0x48
 
 # I2C:
 # Only probe i2c-1 which is the only i2c exposed on a header

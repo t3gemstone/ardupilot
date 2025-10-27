@@ -9,6 +9,7 @@ import abc
 import copy
 import errno
 import glob
+import io
 import math
 import os
 import pathlib
@@ -89,17 +90,6 @@ MAV_FRAMES_TO_TEST = [
 # get location of scripts
 testdir = os.path.dirname(os.path.realpath(__file__))
 
-# Check python version for abstract base class
-if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
-    ABC = abc.ABC
-else:
-    ABC = abc.ABCMeta('ABC', (), {})
-
-if sys.version_info[0] >= 3:
-    import io as StringIO  # srsly, we just did that.
-else:
-    import StringIO
-
 try:
     from itertools import izip as zip
 except ImportError:
@@ -114,10 +104,6 @@ class ErrorException(Exception):
 
 class AutoTestTimeoutException(ErrorException):
     pass
-
-
-if sys.version_info[0] < 3:
-    ConnectionResetError = AutoTestTimeoutException
 
 
 class WaitModeTimeout(AutoTestTimeoutException):
@@ -779,11 +765,7 @@ class MSP_Generic(Telem):
 
     def update_read(self):
         for byte in self.do_read():
-            if sys.version_info[0] < 3:
-                c = byte[0]
-                byte = ord(c)
-            else:
-                c = chr(byte)
+            c = chr(byte)
             # print("Got (0x%02x) (%s) (%s) state=%s" % (byte, chr(byte), str(type(byte)), self.state))
             if self.state == self.STATE_IDLE:
                 # reset state
@@ -1862,7 +1844,7 @@ class ValgrindFailedResult(Result):
         return "Valgrind error detected"
 
 
-class TestSuite(ABC):
+class TestSuite(abc.ABC):
     """Base abstract class.
     It implements the common function for all vehicle types.
     """
@@ -3331,7 +3313,16 @@ class TestSuite(ABC):
         '''temporarily stop the SITL process from running.  Note that
         simulation time will not move forward!'''
         # self.progress("Pausing SITL")
-        self.sitl.kill(signal.SIGSTOP)
+        if sys.platform == 'cygwin':
+            # Maintain original behaviour under cygwin as SIGTSTP has not been tested
+            self.sitl.kill(signal.SIGSTOP)
+
+        else:
+            # SIGTSTP can be ignored by GDB allowing easier debugging rather than having GDB break at every pause
+            # EG add:
+            # handle SIGTSTP nostop noprint pass
+            # handle SIGCONT nostop noprint pass
+            self.sitl.kill(signal.SIGTSTP)
 
     def unpause_SITL(self):
         # self.progress("Unpausing SITL")
@@ -7414,11 +7405,12 @@ class TestSuite(ABC):
                                        (quality, m.signal_quality))
 
     def get_rangefinder_distance(self):
-        m = self.assert_receive_message('RANGEFINDER', timeout=5)
-        return m.distance
+        '''returns current rangefinder distance in metres'''
+        m = self.assert_receive_message('DISTANCE_SENSOR', timeout=5)
+        return m.current_distance * 0.01
 
     def wait_rangefinder_distance(self, dist_min, dist_max, timeout=30, **kwargs):
-        '''wait for RANGEFINDER distance'''
+        '''wait for DISTANCE_SENSOR distance in metres'''
         def validator(value2, target2=None):
             if dist_min <= value2 <= dist_max:
                 return True
@@ -7426,7 +7418,7 @@ class TestSuite(ABC):
                 return False
 
         self.wait_and_maintain(
-            value_name="RageFinderDistance",
+            value_name="RangeFinderDistance",
             target=dist_min,
             current_value_getter=lambda: self.get_rangefinder_distance(),
             accuracy=(dist_max - dist_min),
@@ -8970,15 +8962,11 @@ Also, ignores heartbeats not from our target system'''
         return ''.join(traceback.format_stack())
 
     def get_exception_stacktrace(self, e):
-        if sys.version_info[0] >= 3:
-            ret = "%s\n" % e
-            ret += ''.join(traceback.format_exception(type(e),
-                                                      e,
-                                                      tb=e.__traceback__))
-            return ret
-
-        # Python2:
-        return traceback.format_exc(e)
+        ret = "%s\n" % e
+        ret += ''.join(traceback.format_exception(type(e),
+                                                  e,
+                                                  tb=e.__traceback__))
+        return ret
 
     def bin_logs(self):
         return glob.glob("logs/*.BIN")
@@ -9606,7 +9594,7 @@ Also, ignores heartbeats not from our target system'''
     def dump_message_verbose(self, m):
         '''return verbose dump of m.  Wraps the pymavlink routine which
         inconveniently takes a filehandle'''
-        f = StringIO.StringIO()
+        f = io.StringIO()
         mavutil.dump_message_verbose(f, m)
         return f.getvalue()
 
@@ -10272,106 +10260,119 @@ Also, ignores heartbeats not from our target system'''
 
     def CompassReordering(self):
         '''Test Compass reordering when priorities are changed'''
-        self.context_push()
-        ex = None
-        try:
-            originals = {
-                "COMPASS_OFS_X": 1.1,
-                "COMPASS_OFS_Y": 1.2,
-                "COMPASS_OFS_Z": 1.3,
-                "COMPASS_DIA_X": 1.4,
-                "COMPASS_DIA_Y": 1.5,
-                "COMPASS_DIA_Z": 1.6,
-                "COMPASS_ODI_X": 1.7,
-                "COMPASS_ODI_Y": 1.8,
-                "COMPASS_ODI_Z": 1.9,
-                "COMPASS_MOT_X": 1.91,
-                "COMPASS_MOT_Y": 1.92,
-                "COMPASS_MOT_Z": 1.93,
-                "COMPASS_SCALE": 1.94,
-                "COMPASS_ORIENT": 1,
-                "COMPASS_EXTERNAL": 2,
+        originals = {
+            "COMPASS_OFS_X": 1.1,
+            "COMPASS_OFS_Y": 1.2,
+            "COMPASS_OFS_Z": 1.3,
+            "COMPASS_DIA_X": 1.4,
+            "COMPASS_DIA_Y": 1.5,
+            "COMPASS_DIA_Z": 1.6,
+            "COMPASS_ODI_X": 1.7,
+            "COMPASS_ODI_Y": 1.8,
+            "COMPASS_ODI_Z": 1.9,
+            "COMPASS_MOT_X": 1.91,
+            "COMPASS_MOT_Y": 1.92,
+            "COMPASS_MOT_Z": 1.93,
+            "COMPASS_SCALE": 1.94,
+            "COMPASS_ORIENT": 1,
+            "COMPASS_EXTERNAL": 2,
 
-                "COMPASS_OFS2_X": 2.1,
-                "COMPASS_OFS2_Y": 2.2,
-                "COMPASS_OFS2_Z": 2.3,
-                "COMPASS_DIA2_X": 2.4,
-                "COMPASS_DIA2_Y": 2.5,
-                "COMPASS_DIA2_Z": 2.6,
-                "COMPASS_ODI2_X": 2.7,
-                "COMPASS_ODI2_Y": 2.8,
-                "COMPASS_ODI2_Z": 2.9,
-                "COMPASS_MOT2_X": 2.91,
-                "COMPASS_MOT2_Y": 2.92,
-                "COMPASS_MOT2_Z": 2.93,
-                "COMPASS_SCALE2": 2.94,
-                "COMPASS_ORIENT2": 3,
-                "COMPASS_EXTERN2": 4,
+            "COMPASS_OFS2_X": 2.1,
+            "COMPASS_OFS2_Y": 2.2,
+            "COMPASS_OFS2_Z": 2.3,
+            "COMPASS_DIA2_X": 2.4,
+            "COMPASS_DIA2_Y": 2.5,
+            "COMPASS_DIA2_Z": 2.6,
+            "COMPASS_ODI2_X": 2.7,
+            "COMPASS_ODI2_Y": 2.8,
+            "COMPASS_ODI2_Z": 2.9,
+            "COMPASS_MOT2_X": 2.91,
+            "COMPASS_MOT2_Y": 2.92,
+            "COMPASS_MOT2_Z": 2.93,
+            "COMPASS_SCALE2": 2.94,
+            "COMPASS_ORIENT2": 3,
+            "COMPASS_EXTERN2": 4,
 
-                "COMPASS_OFS3_X": 3.1,
-                "COMPASS_OFS3_Y": 3.2,
-                "COMPASS_OFS3_Z": 3.3,
-                "COMPASS_DIA3_X": 3.4,
-                "COMPASS_DIA3_Y": 3.5,
-                "COMPASS_DIA3_Z": 3.6,
-                "COMPASS_ODI3_X": 3.7,
-                "COMPASS_ODI3_Y": 3.8,
-                "COMPASS_ODI3_Z": 3.9,
-                "COMPASS_MOT3_X": 3.91,
-                "COMPASS_MOT3_Y": 3.92,
-                "COMPASS_MOT3_Z": 3.93,
-                "COMPASS_SCALE3": 3.94,
-                "COMPASS_ORIENT3": 5,
-                "COMPASS_EXTERN3": 6,
-            }
+            "COMPASS_OFS3_X": 3.1,
+            "COMPASS_OFS3_Y": 3.2,
+            "COMPASS_OFS3_Z": 3.3,
+            "COMPASS_DIA3_X": 3.4,
+            "COMPASS_DIA3_Y": 3.5,
+            "COMPASS_DIA3_Z": 3.6,
+            "COMPASS_ODI3_X": 3.7,
+            "COMPASS_ODI3_Y": 3.8,
+            "COMPASS_ODI3_Z": 3.9,
+            "COMPASS_MOT3_X": 3.91,
+            "COMPASS_MOT3_Y": 3.92,
+            "COMPASS_MOT3_Z": 3.93,
+            "COMPASS_SCALE3": 3.94,
+            "COMPASS_ORIENT3": 5,
+            "COMPASS_EXTERN3": 6,
+        }
 
-            # quick sanity check to ensure all values are unique:
-            if len(originals.values()) != len(set(originals.values())):
-                raise NotAchievedException("Values are not all unique!")
+        # quick sanity check to ensure all values are unique:
+        if len(originals.values()) != len(set(originals.values())):
+            raise NotAchievedException("Values are not all unique!")
 
-            self.progress("Setting parameters")
-            self.set_parameters(originals)
+        self.progress("Setting parameters")
+        self.set_parameters(originals)
 
-            self.reboot_sitl()
-
-            # no transforms means our originals should be our finals:
-            self.test_mag_reordering_assert_mag_transform(originals, [])
-
-            self.start_subtest("Pushing 1st mag to 3rd")
-            ey = None
-            self.context_push()
-            try:
-                # now try reprioritising compass 1 to be higher than compass 0:
-                prio1_id = self.get_parameter("COMPASS_PRIO1_ID")
-                prio2_id = self.get_parameter("COMPASS_PRIO2_ID")
-                prio3_id = self.get_parameter("COMPASS_PRIO3_ID")
-                self.set_parameter("COMPASS_PRIO1_ID", prio2_id)
-                self.set_parameter("COMPASS_PRIO2_ID", prio3_id)
-                self.set_parameter("COMPASS_PRIO3_ID", prio1_id)
-
-                self.reboot_sitl()
-
-                self.test_mag_reordering_assert_mag_transform(originals, [(2, 1),
-                                                                          (3, 2),
-                                                                          (1, 3)])
-
-            except Exception as e:
-                self.progress("Caught exception: %s" %
-                              self.get_exception_stacktrace(e))
-                ey = e
-            self.context_pop()
-            self.reboot_sitl()
-            if ey is not None:
-                raise ey
-
-        except Exception as e:
-            self.progress("Caught exception: %s" %
-                          self.get_exception_stacktrace(e))
-            ex = e
-        self.context_pop()
         self.reboot_sitl()
-        if ex is not None:
-            raise ex
+
+        # no transforms means our originals should be our finals:
+        self.test_mag_reordering_assert_mag_transform(originals, [])
+
+        self.start_subtest("Pushing 1st mag to 3rd")
+        self.context_push()
+        # now try reprioritising compass 1 to be higher than compass 0:
+        prio1_id = self.get_parameter("COMPASS_PRIO1_ID")
+        prio2_id = self.get_parameter("COMPASS_PRIO2_ID")
+        prio3_id = self.get_parameter("COMPASS_PRIO3_ID")
+        self.set_parameters({
+            "COMPASS_PRIO1_ID": prio2_id,
+            "COMPASS_PRIO2_ID": prio3_id,
+            "COMPASS_PRIO3_ID": prio1_id,
+        })
+
+        self.reboot_sitl()
+
+        self.test_mag_reordering_assert_mag_transform(originals, [
+            (2, 1),
+            (3, 2),
+            (1, 3),
+        ])
+
+        self.progress("Setting priorities back to original order")
+        self.set_parameters({
+            "COMPASS_PRIO1_ID": prio1_id,
+            "COMPASS_PRIO2_ID": prio2_id,
+            "COMPASS_PRIO3_ID": prio3_id,
+        })
+
+        self.reboot_sitl()
+
+        self.test_mag_reordering_assert_mag_transform(originals, [
+            (1, 1),
+            (2, 2),
+            (3, 3),
+        ])
+
+        self.progress("And reverse ordering")
+        self.set_parameters({
+            "COMPASS_PRIO1_ID": prio3_id,
+            "COMPASS_PRIO2_ID": prio2_id,
+            "COMPASS_PRIO3_ID": prio1_id,
+        })
+
+        self.reboot_sitl()
+
+        self.test_mag_reordering_assert_mag_transform(originals, [
+            (1, 3),
+            (2, 2),
+            (3, 1),
+        ])
+
+        self.context_pop()
 
     # something about SITLCompassCalibration appears to fail
     # this one, so we put it first:
@@ -10609,7 +10610,7 @@ Also, ignores heartbeats not from our target system'''
         class Capturing(list):
             def __enter__(self):
                 self._stderr = sys.stderr
-                sys.stderr = self._stringio = StringIO.StringIO()
+                sys.stderr = self._stringio = io.StringIO()
                 return self
 
             def __exit__(self, *args):
