@@ -173,3 +173,28 @@ tasks:
         pushd "{{ .TOOLCHAINS_DIR }}" >/dev/null && source ./env && popd >/dev/null
         export PATH="{{ .VENV_DIR }}/bin:$PATH"
         {{ .WAF }} clean
+
+  install-ai-swarm:
+    desc: 'Install AI Swarm dependencies, local LLM (Ollama), and configure MQTT'
+    cmds:
+      - |
+        echo "[*] Installing System Dependencies (Mosquitto, Python3-pip)..."
+        sudo apt-get update && sudo apt-get install -y mosquitto mosquitto-clients python3-pip
+      - |
+        if ! command -v ollama &> /dev/null; then
+          echo "[*] Installing Ollama..."
+          curl -fsSL https://ollama.com/install.sh | sh
+        else
+          echo "[+] Ollama is already installed."
+        fi
+      - |
+        echo "[*] Pulling LLM Models (Phi-3-Mini for Leader, Qwen2-0.5B for Followers)..."
+        ollama pull phi3:mini
+        ollama pull qwen2:0.5b
+      - |
+        echo "[*] Installing Python Dependencies..."
+        pip3 install -r gemstone/ai_swarm/requirements.txt
+      - |
+        echo "[+] AI Swarm Installation Complete!"
+        echo "    Leader command: python3 gemstone/ai_swarm/controller.py --id 1 --mode leader"
+        echo "    Follower command: python3 gemstone/ai_swarm/controller.py --id [2-10] --mode follower"

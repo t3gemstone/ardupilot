@@ -1,0 +1,5 @@
+pymavlink
+paho-mqtt
+requests
+ollama
+pydantic
