@@ -196,5 +196,114 @@ tasks:
         pip3 install -r gemstone/ai_swarm/requirements.txt
       - |
         echo "[+] AI Swarm Installation Complete!"
-        echo "    Leader command: python3 gemstone/ai_swarm/controller.py --id 1 --mode leader"
-        echo "    Follower command: python3 gemstone/ai_swarm/controller.py --id [2-10] --mode follower"
+        echo "    Leader:   task swarm-leader DRONE_ID=1"
+        echo "    Follower: task swarm-follower DRONE_ID=2 BROKER_IP=<leader-ip>"
+        echo "    SITL:     task swarm-sitl-test"
+
+  swarm-leader:
+    desc: 'Start AI Swarm Leader on this drone (default ID=1)'
+    vars:
+      DRONE_ID: '{{ default "1" .DRONE_ID }}'
+      BROKER_IP: '{{ default "localhost" .BROKER_IP }}'
+      MAVLINK_URL: '{{ default "udpin:0.0.0.0:14550" .MAVLINK_URL }}'
+    cmds:
+      - |
+        mosquitto -d 2>/dev/null || true
+        python3 gemstone/ai_swarm/controller.py \
+          --id {{ .DRONE_ID }} \
+          --mode leader \
+          --broker {{ .BROKER_IP }} \
+          --mavlink {{ .MAVLINK_URL }}
+
+  swarm-follower:
+    desc: 'Start AI Swarm Follower (DRONE_ID=2 BROKER_IP=<leader-ip>)'
+    vars:
+      DRONE_ID: '{{ default "2" .DRONE_ID }}'
+      BROKER_IP: '{{ default "localhost" .BROKER_IP }}'
+      MAVLINK_URL: '{{ default "udpin:0.0.0.0:14550" .MAVLINK_URL }}'
+    cmds:
+      - |
+        python3 gemstone/ai_swarm/controller.py \
+          --id {{ .DRONE_ID }} \
+          --mode follower \
+          --broker {{ .BROKER_IP }} \
+          --mavlink {{ .MAVLINK_URL }}
+
+  swarm-sitl-test:
+    desc: 'Launch N SITL drones + swarm controllers for local testing (NUM=3)'
+    vars:
+      NUM: '{{ default "3" .NUM }}'
+    cmds:
+      - |
+        echo "[*] Starting SITL swarm test with {{ .NUM }} drones..."
+        python3 gemstone/ai_swarm/sitl_test.py --num {{ .NUM }}
+
+  install-vins-fusion:
+    desc: 'Install VINS-Fusion (Visual-Inertial Odometry) with ROS Noetic + Ceres'
+    cmds:
+      - |
+        echo "[*] Installing ROS Noetic (if not present)..."
+        if ! command -v roscore &> /dev/null; then
+          sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" \
+            > /etc/apt/sources.list.d/ros-latest.list'
+          curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y ros-noetic-desktop
+          echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+        else
+          echo "[+] ROS already installed."
+        fi
+      - |
+        echo "[*] Installing VINS-Fusion dependencies..."
+        sudo apt-get install -y \
+          ros-noetic-cv-bridge \
+          ros-noetic-tf \
+          ros-noetic-message-filters \
+          ros-noetic-image-transport \
+          libgoogle-glog-dev \
+          libatlas-base-dev \
+          libsuitesparse-dev \
+          libeigen3-dev
+      - |
+        echo "[*] Installing Ceres Solver..."
+        if ! pkg-config --exists ceres 2>/dev/null; then
+          cd /tmp
+          wget -q https://github.com/ceres-solver/ceres-solver/archive/refs/tags/2.1.0.tar.gz
+          tar xf 2.1.0.tar.gz
+          mkdir -p ceres-solver-2.1.0/build && cd ceres-solver-2.1.0/build
+          cmake .. -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
+          make -j$(nproc) && sudo make install
+          echo "[+] Ceres Solver installed."
+        else
+          echo "[+] Ceres Solver already installed."
+        fi
+      - |
+        echo "[*] Setting up catkin workspace with VINS-Fusion..."
+        mkdir -p ~/catkin_ws/src
+        source /opt/ros/noetic/setup.bash
+        if [ ! -L ~/catkin_ws/src/VINS-Fusion ]; then
+          ln -s "$(pwd)/VINS-Fusion" ~/catkin_ws/src/VINS-Fusion
+          echo "[+] Symlinked VINS-Fusion into catkin workspace."
+        fi
+        cd ~/catkin_ws
+        catkin_make -DCMAKE_BUILD_TYPE=Release -j$(nproc)
+        echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+      - |
+        echo "[+] VINS-Fusion build complete!"
+        echo "    Run: roslaunch vins vins_rviz.launch"
+        echo "    Then: rosrun vins vins_node <config_file.yaml>"
+
+  vins-start:
+    desc: 'Start VINS-Fusion VIO and bridge pose to ArduPilot via MAVLink (EKF3 Vision)'
+    vars:
+      VINS_CONFIG: '{{ default "VINS-Fusion/config/t3_gem_o1/t3_gem_o1_stereo_imu_config.yaml" .VINS_CONFIG }}'
+      ARDUPILOT_IP: '{{ default "192.168.7.2" .ARDUPILOT_IP }}'
+    cmds:
+      - |
+        source /opt/ros/noetic/setup.bash
+        source ~/catkin_ws/devel/setup.bash
+        echo "[*] Starting VINS-Fusion node..."
+        rosrun vins vins_node {{ .VINS_CONFIG }} &
+        echo "[*] Starting VINS→MAVLink bridge (vision_position_estimate)..."
+        python3 gemstone/ai_swarm/vins_mavlink_bridge.py --ardupilot {{ .ARDUPILOT_IP }}
+

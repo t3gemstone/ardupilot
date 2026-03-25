@@ -45,3 +45,6 @@
 [submodule "modules/littlefs"]
 	path = modules/littlefs
 	url = https://github.com/ArduPilot/littlefs.git
+[submodule "VINS-Fusion"]
+	path = VINS-Fusion
+	url = https://github.com/t3gemstone/VINS-Fusion
