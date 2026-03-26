@@ -12,27 +12,46 @@ import sys
 import os
 
 ARDUPILOT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SITL_BIN       = os.path.join(ARDUPILOT_ROOT, "build/t3-gem-o1/bin/arduplane")
+SITL_BIN       = os.path.join(ARDUPILOT_ROOT, "build/sitl/bin/arduplane")
 SITL_VEHICLE   = os.environ.get("SITL_VEHICLE", "plane")
 BASE_PORT      = 5760   # ports: 5760, 5770, 5780 ...
 BASE_MAVLINK   = 14550  # UDP ports: 14550, 14560 ...
 
 
-def launch_sitl(instance: int) -> subprocess.Popen:
+def launch_sitl(instance: int) -> list:
     port     = BASE_PORT + instance * 10
     out_port = BASE_MAVLINK + instance * 10
-    cmd = [
-        "sim_vehicle.py",
-        "-v", SITL_VEHICLE,
+    
+    # Instance 0 -> TCP:5760, UDP:14550
+    # Instance 1 -> TCP:5770, UDP:14560
+    
+    # 1. Start ArduPlane
+    plane_cmd = [
+        SITL_BIN,
         "-I", str(instance),
-        "--out", f"udp:127.0.0.1:{out_port}",
-        f"--sysid={instance+1}",
-        "--no-rebuild",
+        "--model", "plane",
+        "--defaults", os.path.join(ARDUPILOT_ROOT, "Tools/autotest/models/plane.parm"),
+        "--speedup", "1",
     ]
-    log_file = open(f"/tmp/sitl_drone_{instance+1}.log", "w")
-    print(f"[*] Starting SITL Drone {instance+1} on UDP:{out_port}")
-    return subprocess.Popen(cmd, stdout=log_file, stderr=log_file,
-                            cwd=ARDUPILOT_ROOT)
+    plane_log = open(f"/tmp/ardupilot/arduplane_instance_{instance}.log", "w")
+    print(f"[*] Starting ArduPlane Instance {instance} (TCP:{port})")
+    plane_proc = subprocess.Popen(plane_cmd, stdout=plane_log, stderr=plane_log,
+                                  stdin=subprocess.DEVNULL, cwd=ARDUPILOT_ROOT)
+    
+    # 2. Start MAVProxy to bridge SITL to the controller
+    # MAVProxy connects to SITL via TCP (5760+I*10) and outputs to UDP (14550+I*10)
+    mavproxy_path = "/home/vm/.local/bin/mavproxy.py"
+    mav_cmd = [
+        sys.executable, mavproxy_path,
+        "--master", f"tcp:127.0.0.1:{port}",
+        "--out",    f"udp:127.0.0.1:{out_port}",
+    ]
+    mav_log = open(f"/tmp/ardupilot/mavproxy_instance_{instance}.log", "w")
+    print(f"[*] Starting MAVProxy Instance {instance} (Master:TCP:{port} -> Out:UDP:{out_port})")
+    mav_proc = subprocess.Popen(mav_cmd, stdout=mav_log, stderr=mav_log,
+                                stdin=subprocess.DEVNULL)
+    
+    return [plane_proc, mav_proc]
 
 
 def launch_controller(drone_id: int, mode: str, broker: str, instance: int) -> subprocess.Popen:
@@ -45,9 +64,10 @@ def launch_controller(drone_id: int, mode: str, broker: str, instance: int) -> s
         "--broker",  broker,
         "--mavlink", mavlink_url,
     ]
-    log_file = open(f"/tmp/controller_drone_{drone_id}.log", "w")
+    log_file = open(f"/tmp/ardupilot/controller_drone_{drone_id}.log", "w")
     print(f"[*] Starting Controller Drone {drone_id} ({mode}) → {mavlink_url}")
-    return subprocess.Popen(cmd, stdout=log_file, stderr=log_file)
+    return subprocess.Popen(cmd, stdout=log_file, stderr=log_file,
+                            stdin=subprocess.DEVNULL)
 
 
 def main():
@@ -61,11 +81,20 @@ def main():
     sitl_procs  = []
     ctrl_procs  = []
 
+    os.makedirs("/tmp/ardupilot", exist_ok=True)
+
+    # Pre-launch cleanup to avoid "Address already in use"
+    print("[*] Performing pre-launch cleanup...")
+    subprocess.run(["pkill", "-9", "-f", "arduplane"], capture_output=True)
+    subprocess.run(["pkill", "-9", "-f", "mavproxy"], capture_output=True)
+    subprocess.run(["pkill", "-9", "-f", "controller.py"], capture_output=True)
+    time.sleep(1)
+
     try:
         if not args.no_sitl:
             print(f"\n[*] Launching {num} SITL instances...")
             for i in range(num):
-                sitl_procs.append(launch_sitl(i))
+                sitl_procs.extend(launch_sitl(i))
             print("[*] Waiting 15s for SITL to initialize...")
             time.sleep(15)
 
@@ -79,7 +108,7 @@ def main():
             time.sleep(0.5)
 
         print(f"\n[+] Swarm of {num} drones running!")
-        print("[*] Logs: /tmp/sitl_drone_*.log  /tmp/controller_drone_*.log")
+        print("[*] Logs: /tmp/ardupilot/sitl_drone_*.log  /tmp/ardupilot/controller_drone_*.log")
         print("[*] Press Ctrl+C to stop all.\n")
 
         while True:
@@ -89,7 +118,7 @@ def main():
         print("\n[*] Stopping swarm...")
     finally:
         for p in ctrl_procs + sitl_procs:
-            p.terminate()
+            p.kill()
         print("[+] All processes stopped.")
 
 

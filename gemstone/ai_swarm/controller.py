@@ -72,7 +72,7 @@ class SwarmAIController:
         else:
             log.warning("No heartbeat yet — continuing without ArduPilot confirmation.")
 
-    # ─── MQTT Callbacks ───────────────────────────────────────────────────────
+    # ===== MQTT Callbacks =======================================================
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
         log.info(f"MQTT connected (rc={reason_code})")
@@ -112,7 +112,7 @@ class SwarmAIController:
             # Follower received a final task assignment
             threading.Thread(target=self._process_command, args=(data,), daemon=True).start()
 
-    # ─── Telemetry ────────────────────────────────────────────────────────────
+    # ===== Telemetry ===========================================
 
     def _telemetry_loop(self):
         """Continuously publish own telemetry and read MAVLink messages."""
@@ -138,7 +138,7 @@ class SwarmAIController:
             self.client.publish("swarm/telemetry", payload, qos=0, retain=False)
             time.sleep(TELEMETRY_INTERVAL)
 
-    # ─── Smart Assignment (Squared-distance Auction) ──────────────────────────
+    # ===== Smart Assignment (Squared-distance Auction) =================
 
     def solve_assignment(self, num_drones: int, target_pos: list) -> list:
         """Select the N drones closest to target_pos."""
@@ -187,7 +187,7 @@ class SwarmAIController:
             "score":    score
         }))
 
-    # ─── Command Execution (Follower LLM → MAVLink) ──────────────────────────
+    # ===== Command Execution (Follower LLM → MAVLink) =================
 
     def _process_command(self, command_data):
         """Translate command text to MAVLink via local LLM."""
@@ -263,7 +263,7 @@ Respond ONLY with valid JSON:
                 lat, lon, alt,
                 0, 0, 0, 0, 0, 0, 0, 0)
 
-    # ─── Leader CLI ───────────────────────────────────────────────────────────
+    # ===== Leader CLI ===========================================
 
     def _leader_cli(self):
         log.info(f"\n[LEADER] {self.nato_name} (Drone {self.drone_id}) ready. Type 'exit' to quit.\n")
@@ -314,7 +314,7 @@ Respond ONLY with JSON:
                 for did in assigned:
                     self.client.publish(f"swarm/drone/{did}", json.dumps({"action": directive}))
 
-    # ─── Start ────────────────────────────────────────────────────────────────
+    # ===== Start ===========================================
 
     def start(self):
         self.client.connect(self.broker, DEFAULT_MQTT_PORT, keepalive=60)

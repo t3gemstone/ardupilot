@@ -48,7 +48,7 @@ class VINSMAVLinkBridge:
         # Send heartbeat so ArduPilot recognises the companion computer
         threading.Thread(target=self._heartbeat_loop, daemon=True).start()
 
-    # ─── Heartbeat ───────────────────────────────────────────────────────────
+    # === Heartbeat ===========================================================
 
     def _heartbeat_loop(self):
         while self._running:
@@ -59,7 +59,7 @@ class VINSMAVLinkBridge:
             )
             time.sleep(1.0)
 
-    # ─── Send Vision Pose to ArduPilot ───────────────────────────────────────
+    # === Send Vision Pose to ArduPilot =======================================
 
     def send_vision_position(self, x: float, y: float, z: float,
                               roll: float, pitch: float, yaw: float,
@@ -77,7 +77,7 @@ class VINSMAVLinkBridge:
         usec = int(time.time() * 1e6)
         self.mav.mav.vision_speed_estimate_send(usec, vx, vy, vz)
 
-    # ─── ROS Callback ────────────────────────────────────────────────────────
+    # === ROS Callback ========================================================
 
     def _odom_callback(self, msg: "Odometry"):
         """Called for every VINS odometry message."""
@@ -107,7 +107,7 @@ class VINSMAVLinkBridge:
 
         return roll, pitch, yaw
 
-    # ─── Simulation Mode (no ROS) ────────────────────────────────────────────
+    # === Simulation Mode (no ROS) ============================================
 
     def _sim_loop(self):
         """Send dummy pose for testing without ROS/VINS."""
@@ -120,7 +120,7 @@ class VINSMAVLinkBridge:
             t += 0.1
             time.sleep(0.1)  # 10 Hz
 
-    # ─── Start ────────────────────────────────────────────────────────────────
+    # === Start ================================================================
 
     def start(self):
         if ROS_AVAILABLE:
