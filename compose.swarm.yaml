@@ -1,0 +1,113 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    hostname: ollama
+    ports:
+      - "11435:11434"
+    volumes:
+      - ./gemstone/etc/ollama:/root/.ollama
+    restart: always
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    command: "pull phi3:mini"
+    depends_on:
+      - ollama
+    
+  qgroundcontrol:
+    image: t3gemstone/qgroundcontrol
+    build:
+      dockerfile: ./Dockerfile.qgroundcontrol
+    hostname: qgroundcontrol
+    privileged: true
+    stdin_open: true
+    tty: true
+    environment:
+      DISPLAY: "${DISPLAY}"
+      QT_X11_NO_MITSHM: 1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+    device_cgroup_rules:
+      - 'c *:* rmw'
+    network_mode: host
+    restart: always
+
+  gazebo:
+    image: t3gemstone/gazebo
+    build:
+      dockerfile: ./Dockerfile.gazebo
+    hostname: gazebo
+    stdin_open: true
+    tty: true
+    environment:
+      DISPLAY: "${DISPLAY}"
+      QT_X11_NO_MITSHM: 1
+      GZ_WORLD: skywalker_x8_quad_swarm.sdf
+      # Appending custom models to search path
+      GZ_SIM_RESOURCE_PATH: "/home/ros/ardupilot_gazebo/models:/home/ros/ardupilot_gazebo/worlds:/home/ros/SITL_Models/Gazebo/models:/home/ros/SITL_Models/Gazebo/worlds:/tmp/custom_models"
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - ./gemstone/etc/gazebo/models:/tmp/custom_models:ro
+      - ./gemstone/etc/gazebo/worlds/skywalker_x8_quad_swarm.sdf:/home/ros/SITL_Models/Gazebo/worlds/skywalker_x8_quad_swarm.sdf:ro
+    device_cgroup_rules:
+      - 'c *:* rmw'
+    network_mode: host
+    restart: always
+
+  ardupilot-leader:
+    image: t3gemstone/ardupilot-sitl
+    build:
+      dockerfile: ./Dockerfile.ardupilot-sitl
+    hostname: ardupilot-leader
+    stdin_open: true
+    tty: true
+    entrypoint: >
+      sh -c "Tools/autotest/sim_vehicle.py --wipe-eeprom --no-rebuild 
+      --out 127.0.0.1:14550 --out 127.0.0.1:14551
+      --sysid 1 --instance 0
+      --speedup 1 --model JSON --vehicle ArduPlane --frame gazebo-skywalker-x8-quad --location ARDUCOPTER_AUTOTEST"
+    network_mode: host
+    restart: always
+
+  ardupilot-follower-1:
+    image: t3gemstone/ardupilot-sitl
+    hostname: ardupilot-follower-1
+    stdin_open: true
+    tty: true
+    entrypoint: >
+      sh -c "Tools/autotest/sim_vehicle.py --wipe-eeprom --no-rebuild 
+      --out 127.0.0.1:14550 --out 127.0.0.1:14561
+      --sysid 2 --instance 1
+      --speedup 1 --model JSON --vehicle ArduPlane --frame gazebo-skywalker-x8-quad --location ARDUCOPTER_AUTOTEST"
+    network_mode: host
+    restart: always
+
+  ardupilot-follower-2:
+    image: t3gemstone/ardupilot-sitl
+    hostname: ardupilot-follower-2
+    stdin_open: true
+    tty: true
+    entrypoint: >
+      sh -c "Tools/autotest/sim_vehicle.py --wipe-eeprom --no-rebuild 
+      --out 127.0.0.1:14550 --out 127.0.0.1:14571
+      --sysid 3 --instance 2
+      --speedup 1 --model JSON --vehicle ArduPlane --frame gazebo-skywalker-x8-quad --location ARDUCOPTER_AUTOTEST"
+    network_mode: host
+    restart: always
+
+  ardupilot-follower-3:
+    image: t3gemstone/ardupilot-sitl
+    hostname: ardupilot-follower-3
+    stdin_open: true
+    tty: true
+    entrypoint: >
+      sh -c "Tools/autotest/sim_vehicle.py --wipe-eeprom --no-rebuild 
+      --out 127.0.0.1:14550 --out 127.0.0.1:14581
+      --sysid 4 --instance 3
+      --speedup 1 --model JSON --vehicle ArduPlane --frame gazebo-skywalker-x8-quad --location ARDUCOPTER_AUTOTEST"
+    network_mode: host
+    restart: always
