@@ -156,3 +156,43 @@ the updated settings.
 
 Checkout [SITL_Models documentation](https://github.com/ArduPilot/SITL_Models/tree/master/Gazebo/docs) for more
 information about Gazebo models.
+
+# AI Swarm
+
+ArduPilot Gemstone project features an experimental AI-driven Drone Swarm simulation that lets you control a 4-drone ArduPlane (QuadPlane) swarm in Gazebo using natural language commands powered by a local Large Language Model (LLM).
+
+[![Swarm](.meta/youtube2.png)](https://www.youtube.com/watch?v=slPr-Kdf_r0)
+
+### Quick Start
+
+1. **Start the Swarm Environment**:
+   Begin by spinning up the simulation, including 4 ArduPilot SITL instances, Gazebo, QGroundControl, and a local instance of Ollama to host the LLM.
+   ```bash
+   task swarm-up
+   ```
+
+2. **Launch the AI CLI**:
+   Once all containers are running and the LLM is pulled, start the Python-based CLI to issue natural language commands to your swarm.
+   ```bash
+   task swarm-cli
+   ```
+
+3. **Issue Natural Language Commands**:
+   You can now type commands to the AI Swarm CLI. For example, to make the drones take off and form a V-formation, try:
+   > "Let the lead drone take off to 100 meters. Let Drone 2, Drone 3 and Drone 4 take off and move to the left-back, right-back and full-back positions, respectively, and follow in the V formation."
+
+   The autonomous AI calculates relative offsets and transmits coordinated MAVLink commands in parallel to coordinate complex swarm formations.
+
+4. **Stop the Swarm Environment**:
+   To stop the simulation and cleanly shut down the containers:
+   ```bash
+   task swarm-down
+   ```
+
+### Debugging & Logs
+
+You can view the multi-container docker orchestration logs via:
+
+```bash
+task swarm-logs
+```

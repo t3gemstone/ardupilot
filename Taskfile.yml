@@ -166,6 +166,29 @@ tasks:
       - docker compose down --remove-orphans
       - xhost -local:docker
 
+  swarm-up:
+    cmds:
+      - xhost +local:docker
+      - docker compose -f compose.swarm.yaml up --detach
+
+  swarm-down:
+    cmds:
+      - docker compose -f compose.swarm.yaml kill
+      - docker compose -f compose.swarm.yaml down --remove-orphans
+      - xhost -local:docker
+      
+  swarm-cli:
+    cmds:
+      - task: fetch
+      - |
+        export PATH="{{ .VENV_DIR }}/bin:$PATH"
+        pip3 install --disable-pip-version-check pymavlink openai paho-mqtt
+        python3 gemstone/swarm_cli/cli.py
+
+  swarm-logs:
+    cmds:
+      - docker compose -f compose.swarm.yaml logs -f
+
   clean:
     cmds:
       - task: fetch
