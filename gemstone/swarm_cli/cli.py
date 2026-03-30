@@ -33,6 +33,9 @@ def connect_drones():
         conn.mav.request_data_stream_send(sysid, conn.target_component, 
                                           mavutil.mavlink.MAV_DATA_STREAM_ALL, 2, 1)
         
+        # Set Q_GUIDED_MODE to 1 for VTOL hovering in GUIDED mode
+        conn.mav.param_set_send(sysid, conn.target_component, b"Q_GUIDED_MODE", 1.0, mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
+        
         threading.Thread(target=read_telemetry, args=(sysid,), daemon=True).start()
 
 def read_telemetry(sysid):
@@ -59,9 +62,9 @@ def send_vtol_takeoff(sysid, alt):
     conn.mav.command_long_send(sysid, conn.target_component,
                                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM, 0, 1, 0, 0, 0, 0, 0, 0)
     time.sleep(1)
-    # VTOL_TAKEOFF (84), Param7 = Altitude
+    # NAV_TAKEOFF (22), Param7 = Altitude (QuadPlane will VTOL takeoff if Q_GUIDED_MODE=1)
     conn.mav.command_long_send(sysid, conn.target_component,
-                               mavutil.mavlink.MAV_CMD_NAV_VTOL_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, alt)
+                               mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, alt)
     print(f"[{DRONES[sysid]['name']}] Armed and taking off vertically to {alt}m")
 
 def send_formation_target(sysid, lat, lon, alt):
@@ -84,6 +87,21 @@ def execute_macro(cmd_obj):
         # Takeoff all drones
         for sysid in DRONES:
             send_vtol_takeoff(sysid, alt)
+            
+        print(f"[Swarm] Waiting for drones to reach {alt}m...")
+        target_alt = alt * 0.85 # Wait until 85% of target altitude is reached
+        start_wait = time.time()
+        while time.time() - start_wait < 45:
+            all_reached = True
+            for sysid in DRONES:
+                curr_alt = DRONES[sysid]["state"].get("alt", 0)
+                if curr_alt < target_alt:
+                    all_reached = False
+                    break
+            if all_reached:
+                print("[Swarm] All drones took off successfully!")
+                break
+            time.sleep(1)
             
     elif cmd == "V_FORMATION":
         print("[Swarm] Computing V-Formation offsets based on Leader...")
