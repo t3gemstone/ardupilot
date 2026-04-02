@@ -49,8 +49,8 @@ void RCOutput_Sysfs::init()
             // pwmchip3/pwm0, pwmchip3/pwm1
             _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+3, i);
         } else if (i == 2 || i == 3) {
-            // pwmchip5/pwm0, pwmchip5/pwm1
-            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+5, i-2);
+            // pwmchip4/pwm0, pwmchip4/pwm1
+            _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+4, i-2);
         } else {
             // pwmchip0/pwm0, pwmchip1/pwm0, pwmchip2/pwm0
             _pwm_channels[i] = NEW_NOTHROW PWM_Sysfs(_chip+(i-4), 0);
