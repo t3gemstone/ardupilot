@@ -97,6 +97,146 @@ tasks:
         {{ .WAF }} "${VEHICLE}"
         aarch64-linux-gnu-strip "{{ .BUILD_DIR }}/{{ .MACHINE }}/bin/ardu${VEHICLE}"
 
+  build-deb:
+    desc: 'Build t3-gem-ardupilot.deb for all available vehicles'
+    silent: true
+    vars:
+      PKG_NAME: 't3-gem-ardupilot'
+      PKG_VERSION: '{{.VERSION | default "1.0.0"}}'
+      PKG_ARCH: '{{.DEB_ARCH | default "arm64"}}'
+      BUILD_ROOT: '.deb_build/{{.PKG_NAME}}_{{.PKG_VERSION}}'
+      VEHICLES: 'plane copter rover sub'
+    preconditions:
+      - sh: command -v dpkg-deb
+        msg: "You must install dpkg-dev: sudo apt install dpkg-dev"
+    cmds:
+      - |
+        for VEHICLE in {{.VEHICLES}}; do
+          echo "Building ardu${VEHICLE}..."
+          VEHICLE="${VEHICLE}" task build || { echo "Failed to build ${VEHICLE}, skipping"; continue; }
+        done
+      - |
+        PKG_VERSION="{{.PKG_VERSION}}"
+        PKG_ARCH="{{.PKG_ARCH}}"
+        BUILD_ROOT="{{.BUILD_ROOT}}"
+        BOARD_DIR="{{.BOARD_DIR}}"
+        VEHICLES="{{.VEHICLES}}"
+  
+        rm -rf "${BUILD_ROOT}"
+        mkdir -p "${BUILD_ROOT}/DEBIAN"
+        mkdir -p "${BUILD_ROOT}${BOARD_DIR}/bin"
+        mkdir -p "${BUILD_ROOT}${BOARD_DIR}/var"
+        mkdir -p "${BUILD_ROOT}/lib/systemd/system"
+        mkdir -p "${BUILD_ROOT}/usr/bin"
+  
+        FOUND=""
+        for VEHICLE in ${VEHICLES}; do
+          BIN="build/{{.MACHINE}}/bin/ardu${VEHICLE}"
+          if [ -f "${BIN}" ]; then
+            install -m 755 "${BIN}" "${BUILD_ROOT}${BOARD_DIR}/bin/ardu${VEHICLE}"
+            FOUND="${FOUND} ${VEHICLE}"
+          fi
+        done
+  
+        if [ -z "${FOUND}" ]; then
+          echo "Error: no vehicle binaries found in build/{{.MACHINE}}/bin/"
+          exit 1
+        fi
+  
+        echo "Packaging vehicles:${FOUND}"
+  
+        [ -d gemstone/etc ]     && cp -r gemstone/etc/.     "${BUILD_ROOT}${BOARD_DIR}/etc/"
+        [ -d gemstone/systemd ] && cp    gemstone/systemd/* "${BUILD_ROOT}/lib/systemd/system/"
+  
+        cat > "${BUILD_ROOT}/usr/bin/ardupilot-enable" << SCRIPT
+        #!/bin/bash
+        AVAILABLE="${FOUND}"
+        VEHICLE="\$1"
+  
+        if [ -z "\${VEHICLE}" ]; then
+          echo "Usage: ardupilot-enable <vehicle>"
+          echo "Available vehicles: \${AVAILABLE}"
+          exit 1
+        fi
+  
+        if ! echo "\${AVAILABLE}" | grep -qw "\${VEHICLE}"; then
+          echo "Error: '\${VEHICLE}' is not available. Choose from:\${AVAILABLE}"
+          exit 1
+        fi
+  
+        for V in \${AVAILABLE}; do
+          if [ "\${V}" != "\${VEHICLE}" ]; then
+            sudo systemctl disable --now "ardu\${V}" 2>/dev/null || true
+          fi
+        done
+  
+        sudo systemctl enable --now "ardu\${VEHICLE}"
+        echo "ArduPilot \${VEHICLE} enabled and started."
+        SCRIPT
+        chmod 755 "${BUILD_ROOT}/usr/bin/ardupilot-enable"
+  
+        # DEBIAN/control
+        cat > "${BUILD_ROOT}/DEBIAN/control" << CTRL
+        Package: t3-gem-ardupilot
+        Version: ${PKG_VERSION}
+        Architecture: ${PKG_ARCH}
+        Maintainer: ArduPilot Build System <build@ardupilot.org>
+        Description: ArduPilot autopilot suite for T3 Gemstone board
+         Installs all available vehicle binaries. Use ardupilot-enable
+         to activate the vehicle of your choice:
+         .
+           ardupilot-enable plane
+           ardupilot-enable copter
+         .
+         Available vehicles:${FOUND}
+        Section: misc
+        Priority: optional
+        Depends: libc6
+        CTRL
+        sed -i 's/^      //' "${BUILD_ROOT}/DEBIAN/control"
+  
+        cat > "${BUILD_ROOT}/DEBIAN/postinst" << 'EOF'
+        #!/bin/bash
+        set -e
+        OVERLAYS="k3-am67a-t3-gem-o1-spidev0-1cs.dtbo k3-am67a-t3-gem-o1-i2c1-400000.dtbo k3-am67a-t3-gem-o1-uart-ttys0.dtbo k3-am67a-t3-gem-o1-uart-ttys6.dtbo k3-am67a-t3-gem-o1-pwm-ecap0-gpio12.dtbo k3-am67a-t3-gem-o1-pwm-ecap1-gpio16.dtbo k3-am67a-t3-gem-o1-pwm-ecap2-gpio18.dtbo k3-am67a-t3-gem-o1-pwm-epwm0-gpio5-gpio14.dtbo k3-am67a-t3-gem-o1-pwm-epwm1-gpio6-gpio13.dtbo"
+        UENV="/boot/uEnv.txt"
+        if [ -f "${UENV}" ]; then
+          if grep -q '^overlays=' "${UENV}"; then
+            sed -i "s|^overlays=.*$|overlays=${OVERLAYS}|" "${UENV}"
+          else
+            echo "overlays=${OVERLAYS}" >> "${UENV}"
+          fi
+        fi
+        systemctl daemon-reload
+        echo ""
+        echo "ArduPilot installed. Enable your vehicle then reboot:"
+        echo "  ardupilot-enable plane"
+        echo "  ardupilot-enable copter"
+        echo ""
+        exit 0
+        EOF
+        sed -i 's/^      //' "${BUILD_ROOT}/DEBIAN/postinst"
+        chmod 755 "${BUILD_ROOT}/DEBIAN/postinst"
+  
+        cat > "${BUILD_ROOT}/DEBIAN/prerm" << EOF
+        #!/bin/bash
+        set -e
+        for VEHICLE in ${FOUND}; do
+          systemctl stop    "ardu\${VEHICLE}" 2>/dev/null || true
+          systemctl disable "ardu\${VEHICLE}" 2>/dev/null || true
+        done
+        exit 0
+        EOF
+        sed -i 's/^      //' "${BUILD_ROOT}/DEBIAN/prerm"
+        chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
+  
+        DEB_FILE="{{.PKG_NAME}}_${PKG_VERSION}_${PKG_ARCH}.deb"
+        dpkg-deb --build --root-owner-group "${BUILD_ROOT}" "${DEB_FILE}"
+  
+        echo ""
+        echo "Package ready: ${DEB_FILE}"
+        echo "Vehicles included:${FOUND}"
+
   board-setup:
     desc: 'Prepare T3 Gemstone board for running ArduPilot'
     silent: true

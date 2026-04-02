@@ -174,3 +174,6 @@ venv.bak/
 autotest_result_*_junit.xml
 .python-version
 gemstone/etc/ollama
+
+.deb_build/
+*.deb
