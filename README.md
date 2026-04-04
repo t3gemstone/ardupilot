@@ -146,7 +146,7 @@ the updated settings.
 
 # AI Swarm
 
-ArduPilot Gemstone project features an experimental AI-driven Drone Swarm simulation that lets you control a 4-drone ArduPlane (QuadPlane) swarm in Gazebo using natural language commands powered by a local Large Language Model (LLM).
+Gemstone ArduPilot project features an experimental AI-driven Drone Swarm simulation that lets you control a 4-drone ArduPlane (QuadPlane) swarm in Gazebo using natural language commands powered by a local Large Language Model (LLM).
 
 [![Swarm](.meta/youtube2.png)](https://www.youtube.com/watch?v=slPr-Kdf_r0)
 
