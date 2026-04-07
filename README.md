@@ -29,7 +29,6 @@ You can select which vehicle you want to compile by changing the `VEHICLE` varia
 ```bash
 sudo apt update
 sudo apt install git curl build-essential python3-venv binutils-aarch64-linux-gnu
-./setup.sh
 ```
 
 ##### 2. Clone the project
@@ -38,6 +37,7 @@ sudo apt install git curl build-essential python3-venv binutils-aarch64-linux-gn
 git clone https://github.com/t3gemstone/ardupilot
 cd ardupilot
 git submodule update --init --recursive
+./setup.sh
 ```
 
 ##### 3. Install Taskfile
