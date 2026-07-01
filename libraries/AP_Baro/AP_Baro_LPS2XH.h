@@ -22,6 +22,7 @@ public:
     enum LPS2XH_TYPE {
         BARO_LPS22H = 0,
         BARO_LPS25H = 1,
+        BARO_LPS22DF = 2,
     };
 
     AP_Baro_LPS2XH(AP_Baro &baro, AP_HAL::OwnPtr<AP_HAL::Device> dev);
