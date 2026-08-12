@@ -11,7 +11,7 @@ vars:
   WAF: "{{ .ROOT_DIR }}/modules/waf/waf-light"
   URLS:
     map: {
-      toolchains: "https://github.com/t3gemstone/toolchains/releases/latest/download/t3gemstone-toolchains-${DISTRO_BASE}-${DISTRO_SUITE}.tar.gz",
+      toolchains: "https://github.com/t3gemstone/toolchains/releases/latest/download/t3gemstone-toolchains-${DISTRO_BASE}-${DISTRO_SUITE}-minimal.tar.gz",
     }
 
 env:
