@@ -54,8 +54,11 @@ extern const AP_HAL::HAL &hal;
 #define PRESS_OUT_XL_ADDR		   0x28
 #define STATUS_ADDR		  		   0x27
 
+#define LPS22DF_IF_CTRL             0x0E
 #define LPS22DF_CTRL_REG1           0x10
 #define LPS22DF_CTRL_REG2           0x11
+
+#define LPS22DF_IF_CTRL_I2C_I3C_DIS (1 << 6)
 
 #define LPS22DF_CTRL_REG1_AVG_4     (0 << 0)
 #define LPS22DF_CTRL_REG1_AVG_8     (1 << 0)
@@ -200,6 +203,11 @@ bool AP_Baro_LPS2XH::_init()
     if (_lps2xh_type == BARO_LPS22DF) {
         _dev->write_register(LPS22DF_CTRL_REG2, LPS22DF_CTRL_REG2_SWRESET);
         hal.scheduler->delay(10);
+        if (_dev->bus_type() == AP_HAL::Device::BUS_TYPE_SPI) {
+            // disable i2c/i3c, otherwise traffic to other devices on the
+            // shared SPI bus can be decoded as i2c/i3c and reset the sensor
+            _dev->write_register(LPS22DF_IF_CTRL, LPS22DF_IF_CTRL_I2C_I3C_DIS);
+        }
         _dev->write_register(LPS22DF_CTRL_REG2,
                               LPS22DF_CTRL_REG2_BDU |
                               LPS22DF_CTRL_REG2_EN_LPFP |
