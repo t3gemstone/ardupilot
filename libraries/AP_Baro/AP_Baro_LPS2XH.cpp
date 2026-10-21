@@ -235,22 +235,26 @@ bool AP_Baro_LPS2XH::_init()
 //check ID
 bool AP_Baro_LPS2XH::_check_whoami(void)
 {
-    uint8_t whoami;
-    if (!_dev->read_registers(REG_ID, &whoami, 1)) {
-	   return false;
-    }
-    DEV_PRINTF("LPS2XH whoami 0x%02x\n", whoami);
+    // the first transfer on the bus after startup can read back as
+    // 0x00 (seen on t3-gem-o1), so allow a few attempts
+    for (uint8_t i = 0; i < 3; i++) {
+        uint8_t whoami;
+        if (!_dev->read_registers(REG_ID, &whoami, 1)) {
+            continue;
+        }
+        DEV_PRINTF("LPS2XH whoami 0x%02x\n", whoami);
 
-    switch(whoami){
-    case LPS22HB_WHOAMI:
-        _lps2xh_type = BARO_LPS22H;
-        return true;
-    case LPS25HB_WHOAMI:
-        _lps2xh_type = BARO_LPS25H;
-        return true;
-    case LPS22DF_WHOAMI:
-        _lps2xh_type = BARO_LPS22DF;
-        return true;
+        switch(whoami){
+        case LPS22HB_WHOAMI:
+            _lps2xh_type = BARO_LPS22H;
+            return true;
+        case LPS25HB_WHOAMI:
+            _lps2xh_type = BARO_LPS25H;
+            return true;
+        case LPS22DF_WHOAMI:
+            _lps2xh_type = BARO_LPS22DF;
+            return true;
+        }
     }
 
     return false;
